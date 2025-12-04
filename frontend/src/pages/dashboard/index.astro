@@ -1,0 +1,127 @@
+---
+import Dashboard from "../../layouts/Dashboard.astro";
+import { Package, TrendingUp, Clock, CheckCircle } from "lucide-astro";
+import { formatCurrency } from "../../lib/utils";
+
+// TODO: Fetch from API
+const stats = [
+  { label: 'Total Transaksi', value: '24', icon: Package, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+  { label: 'Total Belanja', value: formatCurrency(1250000), icon: TrendingUp, color: 'text-green-400', bg: 'bg-green-400/10' },
+  { label: 'Pending', value: '2', icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+  { label: 'Selesai', value: '22', icon: CheckCircle, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+];
+
+const recentOrders = [
+  { id: 'ORD-001', product: 'Mobile Legends', item: '86 Diamonds', status: 'completed', amount: 25000, date: '2024-01-15' },
+  { id: 'ORD-002', product: 'Free Fire', item: '100 Diamonds', status: 'pending', amount: 15000, date: '2024-01-14' },
+  { id: 'ORD-003', product: 'PUBG Mobile', item: '60 UC', status: 'completed', amount: 16000, date: '2024-01-13' },
+];
+
+const statusColors = {
+  pending: 'text-yellow-400 bg-yellow-400/10',
+  processing: 'text-blue-400 bg-blue-400/10',
+  completed: 'text-green-400 bg-green-400/10',
+  failed: 'text-red-400 bg-red-400/10',
+};
+
+const statusLabels = {
+  pending: 'Pending',
+  processing: 'Diproses',
+  completed: 'Selesai',
+  failed: 'Gagal',
+};
+---
+
+<Dashboard title="Dashboard - Boba.Store">
+  <div class="space-y-8">
+    <!-- Header -->
+    <div>
+      <h1 class="text-3xl font-bold text-white">Dashboard</h1>
+      <p class="text-white/60 mt-1">Selamat datang kembali!</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {stats.map(stat => {
+        const Icon = stat.icon;
+        return (
+          <div class="glass rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class={`w-12 h-12 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                <Icon class={`w-6 h-6 ${stat.color}`} />
+              </div>
+            </div>
+            <p class="text-2xl font-bold text-white">{stat.value}</p>
+            <p class="text-sm text-white/60 mt-1">{stat.label}</p>
+          </div>
+        );
+      })}
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="glass rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-white">Transaksi Terbaru</h2>
+        <a href="/dashboard/history" class="text-sm text-[var(--color-primary)] hover:underline">
+          Lihat Semua
+        </a>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-white/60 text-sm border-b border-white/10">
+              <th class="pb-4 font-medium">ID Pesanan</th>
+              <th class="pb-4 font-medium">Produk</th>
+              <th class="pb-4 font-medium">Item</th>
+              <th class="pb-4 font-medium">Status</th>
+              <th class="pb-4 font-medium text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            {recentOrders.map(order => (
+              <tr class="hover:bg-white/5 transition-colors">
+                <td class="py-4">
+                  <a href={`/track?id=${order.id}`} class="text-[var(--color-primary)] hover:underline font-medium">
+                    {order.id}
+                  </a>
+                </td>
+                <td class="py-4 text-white">{order.product}</td>
+                <td class="py-4 text-white/70">{order.item}</td>
+                <td class="py-4">
+                  <span class={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status]}`}>
+                    {statusLabels[order.status]}
+                  </span>
+                </td>
+                <td class="py-4 text-right text-white font-medium">{formatCurrency(order.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {recentOrders.length === 0 && (
+        <div class="text-center py-12">
+          <Package class="w-12 h-12 text-white/20 mx-auto mb-4" />
+          <p class="text-white/60">Belum ada transaksi</p>
+        </div>
+      )}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <a href="/products" class="glass rounded-2xl p-6 hover:bg-white/10 transition-colors group">
+        <h3 class="text-lg font-bold text-white mb-2 group-hover:text-[var(--color-primary)] transition-colors">
+          Top Up Sekarang
+        </h3>
+        <p class="text-white/60">Pilih game favoritmu dan top up dengan harga termurah.</p>
+      </a>
+      <a href="/track" class="glass rounded-2xl p-6 hover:bg-white/10 transition-colors group">
+        <h3 class="text-lg font-bold text-white mb-2 group-hover:text-[var(--color-primary)] transition-colors">
+          Lacak Pesanan
+        </h3>
+        <p class="text-white/60">Cek status pesanan dengan ID transaksi.</p>
+      </a>
+    </div>
+  </div>
+</Dashboard>

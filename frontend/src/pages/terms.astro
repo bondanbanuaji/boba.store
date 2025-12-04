@@ -1,0 +1,93 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { FileText } from "lucide-astro";
+---
+
+<Layout>
+  <section class="py-12 bg-gradient-to-b from-[var(--color-primary)]/10 to-transparent">
+    <div class="container mx-auto px-4 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-6">
+        Syarat & <span class="text-gradient">Ketentuan</span>
+      </h1>
+      <p class="text-white/60 max-w-2xl mx-auto">
+        Terakhir diperbarui: {new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </p>
+    </div>
+  </section>
+
+  <section class="py-12">
+    <div class="container mx-auto px-4 max-w-3xl">
+      <div class="glass rounded-2xl p-8 md:p-12 space-y-8">
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-sm">1</span>
+            Ketentuan Umum
+          </h2>
+          <div class="text-white/70 space-y-3 pl-11">
+            <p>Dengan menggunakan layanan Boba.Store, Anda menyetujui untuk terikat dengan syarat dan ketentuan berikut.</p>
+            <p>Boba.Store adalah platform top-up game dan produk digital yang beroperasi di Indonesia.</p>
+            <p>Kami berhak mengubah syarat dan ketentuan ini sewaktu-waktu tanpa pemberitahuan sebelumnya.</p>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-sm">2</span>
+            Layanan
+          </h2>
+          <div class="text-white/70 space-y-3 pl-11">
+            <p>Boba.Store menyediakan layanan top-up untuk berbagai game dan produk digital.</p>
+            <p>Proses pengiriman dilakukan secara otomatis setelah pembayaran dikonfirmasi.</p>
+            <p>Waktu pengiriman bervariasi tergantung produk dan ketersediaan sistem.</p>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-sm">3</span>
+            Pembayaran
+          </h2>
+          <div class="text-white/70 space-y-3 pl-11">
+            <p>Semua harga yang ditampilkan dalam mata uang Rupiah (IDR).</p>
+            <p>Pembayaran harus dilakukan sesuai dengan nominal yang tertera.</p>
+            <p>Kami tidak bertanggung jawab atas kesalahan input data oleh pengguna.</p>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-sm">4</span>
+            Refund & Pembatalan
+          </h2>
+          <div class="text-white/70 space-y-3 pl-11">
+            <p>Transaksi yang sudah berhasil tidak dapat dibatalkan atau di-refund.</p>
+            <p>Refund hanya berlaku jika terjadi kegagalan sistem dari pihak kami.</p>
+            <p>Proses refund memerlukan waktu 1-7 hari kerja.</p>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-sm">5</span>
+            Tanggung Jawab Pengguna
+          </h2>
+          <div class="text-white/70 space-y-3 pl-11">
+            <p>Pengguna wajib memasukkan data yang benar dan akurat.</p>
+            <p>Kesalahan input ID game menjadi tanggung jawab pengguna sepenuhnya.</p>
+            <p>Pengguna dilarang menggunakan layanan untuk aktivitas ilegal.</p>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-sm">6</span>
+            Kontak
+          </h2>
+          <div class="text-white/70 space-y-3 pl-11">
+            <p>Untuk pertanyaan terkait syarat dan ketentuan ini, silakan hubungi kami melalui halaman <a href="/contact" class="text-[var(--color-primary)] hover:underline">Kontak</a>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

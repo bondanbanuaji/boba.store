@@ -1,0 +1,82 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import ProductCard from "../../components/widgets/ProductCard.astro";
+import { getProducts } from "../../lib/api";
+
+const { category } = Astro.url.searchParams;
+const { data: products } = await getProducts(category);
+
+const categories = [
+    { id: "all", label: "Semua" },
+    { id: "game", label: "Games" },
+    { id: "pulsa", label: "Pulsa & Data" },
+    { id: "ewallet", label: "E-Wallet" },
+    { id: "voucher", label: "Voucher" },
+];
+
+const currentCategory = category || "all";
+---
+
+<Layout>
+    <section
+        class="py-12 bg-gradient-to-b from-[var(--color-primary)]/10 to-transparent"
+    >
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-6">
+                Daftar <span class="text-gradient">Produk</span>
+            </h1>
+            <p class="text-white/60 max-w-2xl mx-auto">
+                Pilih game atau produk digital favoritmu dan nikmati harga
+                termurah.
+            </p>
+        </div>
+    </section>
+
+    <section class="py-12">
+        <div class="container mx-auto px-4">
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center justify-center gap-4 mb-12">
+                {
+                    categories.map((cat) => (
+                        <a
+                            href={
+                                cat.id === "all"
+                                    ? "/products"
+                                    : `/products?category=${cat.id}`
+                            }
+                            class={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                                (cat.id === "all" && !category) ||
+                                category === cat.id
+                                    ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+                                    : "glass text-white/70 hover:text-white hover:bg-white/10"
+                            }`}
+                        >
+                            {cat.label}
+                        </a>
+                    ))
+                }
+            </div>
+
+            <!-- Grid -->
+            {
+                products && products.length > 0 ? (
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                        {products.map((product) => (
+                            <ProductCard product={product} />
+                        ))}
+                    </div>
+                ) : (
+                    <div class="text-center py-20">
+                        <div class="text-6xl mb-4">🔍</div>
+                        <h3 class="text-2xl font-bold text-white mb-2">
+                            Produk Tidak Ditemukan
+                        </h3>
+                        <p class="text-white/60">
+                            Belum ada produk untuk kategori ini.
+                        </p>
+                    </div>
+                )
+            }
+        </div>
+    </section>
+</Layout>

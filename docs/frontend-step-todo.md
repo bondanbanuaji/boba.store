@@ -1,13 +1,13 @@
 # Tutorial Frontend Lengkap - Boba.Store
 
-> **Panduan Frontend** - Astro 5 + Better Auth + Tailwind CSS + TypeScript
+> **Panduan Frontend** - Astro 5 + Better Auth + Tailwind CSS (JavaScript)
 
 ---
 
 ## Daftar Isi
 
 1. [Setup Project](#1-setup-project)
-2. [Konfigurasi & Types](#2-konfigurasi--types)
+2. [Library & API Client](#2-library--api-client)
 3. [Authentication](#3-authentication)
 4. [Layouts & Components](#4-layouts--components)
 5. [Pages](#5-pages)
@@ -30,7 +30,7 @@ npm create astro@latest frontend
 
 # Pilih opsi:
 # - Template: Empty
-# - TypeScript: Yes (strict)
+# - TypeScript: No
 # - Install dependencies: Yes
 
 cd frontend
@@ -51,9 +51,6 @@ npm install zod
 
 # Utilities
 npm install clsx
-
-# Development
-npm install -D typescript @types/node
 ```
 
 ### 1.3 Konfigurasi Astro
@@ -61,7 +58,6 @@ npm install -D typescript @types/node
 File: `astro.config.mjs`
 
 ```javascript
-// @ts-check
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -79,31 +75,7 @@ export default defineConfig({
 });
 ```
 
-### 1.4 Konfigurasi TypeScript
-
-File: `tsconfig.json`
-
-```json
-{
-  "extends": "astro/tsconfigs/strict",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@components/*": ["src/components/*"],
-      "@layouts/*": ["src/layouts/*"],
-      "@lib/*": ["src/lib/*"],
-      "@styles/*": ["src/styles/*"]
-    },
-    "strictNullChecks": true,
-    "noImplicitAny": true
-  },
-  "include": ["src/**/*", "env.d.ts"],
-  "exclude": ["node_modules"]
-}
-```
-
-### 1.5 Environment Variables
+### 1.4 Environment Variables
 
 File: `.env`
 
@@ -116,23 +88,7 @@ PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-File: `src/env.d.ts`
-
-```typescript
-/// <reference path="../.astro/types.d.ts" />
-
-interface ImportMetaEnv {
-  readonly PUBLIC_API_URL: string;
-  readonly PUBLIC_SUPABASE_URL: string;
-  readonly PUBLIC_SUPABASE_ANON_KEY: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-```
-
-### 1.6 Struktur Folder
+### 1.5 Struktur Folder
 
 ```
 frontend/
@@ -147,11 +103,10 @@ frontend/
 │   │   ├── AuthLayout.astro # Auth pages layout
 │   │   └── DashboardLayout.astro
 │   ├── lib/
-│   │   ├── auth-client.ts   # Better Auth client
-│   │   ├── api.ts           # API client
-│   │   ├── supabase.ts      # Supabase client (realtime)
-│   │   ├── utils.ts         # Utility functions
-│   │   └── types.ts         # TypeScript types
+│   │   ├── auth-client.js   # Better Auth client
+│   │   ├── api.js           # API client
+│   │   ├── supabase.js      # Supabase client (realtime)
+│   │   └── utils.js         # Utility functions
 │   ├── pages/
 │   │   ├── index.astro
 │   │   ├── auth/
@@ -164,219 +119,19 @@ frontend/
 ├── public/
 │   └── images/
 ├── astro.config.mjs
-├── tsconfig.json
 └── package.json
 ```
 
 ---
 
-## 2. Konfigurasi & Types
+## 2. Library & API Client
 
-### 2.1 TypeScript Types
+### 2.1 Better Auth Client
 
-File: `src/lib/types.ts`
+File: `src/lib/auth-client.js`
 
-```typescript
-// ============================================
-// USER & AUTH TYPES
-// ============================================
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  emailVerified: boolean;
-  image: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Session {
-  id: string;
-  userId: string;
-  token: string;
-  expiresAt: string;
-}
-
-export interface AuthSession {
-  user: User;
-  session: Session;
-}
-
-export interface Profile {
-  id: string;
-  fullName: string | null;
-  phone: string | null;
-  balance: number;
-  role: 'user' | 'admin' | 'reseller';
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ============================================
-// PRODUCT TYPES
-// ============================================
-
-export type ProductCategory = 'game' | 'pulsa' | 'ewallet' | 'pln' | 'voucher';
-export type StockStatus = 'available' | 'limited' | 'empty';
-
-export interface Product {
-  id: string;
-  category: ProductCategory;
-  provider: string;
-  name: string;
-  slug: string;
-  sku: string | null;
-  price: number;
-  discount: number;
-  description: string | null;
-  imageUrl: string | null;
-  isActive: boolean;
-  stockStatus: StockStatus;
-  minQty: number;
-  maxQty: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProductGroup {
-  provider: string;
-  providerName: string;
-  imageUrl: string;
-  products: Product[];
-}
-
-// ============================================
-// ORDER TYPES
-// ============================================
-
-export type OrderStatus = 'pending' | 'processing' | 'success' | 'failed' | 'cancelled' | 'refunded';
-export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'expired' | 'refunded';
-
-export interface Order {
-  id: string;
-  orderNumber: string;
-  userId: string | null;
-  productId: string | null;
-  targetId: string;
-  targetName: string | null;
-  targetServer: string | null;
-  productName: string;
-  productSku: string | null;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  adminFee: number;
-  totalPrice: number;
-  status: OrderStatus;
-  paymentStatus: PaymentStatus;
-  paymentMethod: string | null;
-  providerTrxId: string | null;
-  providerStatus: string | null;
-  providerSn: string | null;
-  providerMessage: string | null;
-  paymentId: string | null;
-  paymentUrl: string | null;
-  paymentExpiredAt: string | null;
-  paidAt: string | null;
-  notes: string | null;
-  createdAt: string;
-  updatedAt: string;
-  completedAt: string | null;
-}
-
-// ============================================
-// TRANSACTION TYPES
-// ============================================
-
-export type TransactionType = 'topup' | 'purchase' | 'refund' | 'bonus' | 'adjustment';
-
-export interface Transaction {
-  id: string;
-  userId: string;
-  orderId: string | null;
-  type: TransactionType;
-  amount: number;
-  balanceBefore: number;
-  balanceAfter: number;
-  description: string | null;
-  referenceId: string | null;
-  createdAt: string;
-}
-
-// ============================================
-// API RESPONSE TYPES
-// ============================================
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
-
-export interface PaginatedResponse<T> {
-  success: boolean;
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-// ============================================
-// FORM TYPES
-// ============================================
-
-export interface LoginFormData {
-  email: string;
-  password: string;
-}
-
-export interface RegisterFormData {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
-
-export interface OrderFormData {
-  productId: string;
-  targetId: string;
-  targetServer?: string;
-  quantity: number;
-  paymentMethod: string;
-}
-
-export interface ProfileFormData {
-  fullName: string;
-  phone: string;
-}
-
-// ============================================
-// SETTINGS TYPES
-// ============================================
-
-export interface Settings {
-  adminFee: number;
-  minTopup: number;
-  maxTopup: number;
-  maintenanceMode: boolean;
-  maintenanceMessage: string;
-  contactWhatsapp: string;
-  contactEmail: string;
-}
-```
-
-### 2.2 Better Auth Client
-
-File: `src/lib/auth-client.ts`
-
-```typescript
+```javascript
 import { createAuthClient } from '@better-auth/client';
-import type { AuthSession, User } from './types';
 
 const API_URL = import.meta.env.PUBLIC_API_URL;
 
@@ -392,11 +147,7 @@ export const authClient = createAuthClient({
 // AUTH FUNCTIONS
 // ============================================
 
-export async function signUp(
-  name: string,
-  email: string,
-  password: string
-): Promise<{ data: AuthSession | null; error: Error | null }> {
+export async function signUp(name, email, password) {
   try {
     const result = await authClient.signUp.email({
       name,
@@ -408,7 +159,7 @@ export async function signUp(
       return { data: null, error: new Error(result.error.message) };
     }
 
-    return { data: result.data as AuthSession, error: null };
+    return { data: result.data, error: null };
   } catch (error) {
     return { 
       data: null, 
@@ -417,10 +168,7 @@ export async function signUp(
   }
 }
 
-export async function signIn(
-  email: string,
-  password: string
-): Promise<{ data: AuthSession | null; error: Error | null }> {
+export async function signIn(email, password) {
   try {
     const result = await authClient.signIn.email({
       email,
@@ -431,7 +179,7 @@ export async function signIn(
       return { data: null, error: new Error(result.error.message) };
     }
 
-    return { data: result.data as AuthSession, error: null };
+    return { data: result.data, error: null };
   } catch (error) {
     return { 
       data: null, 
@@ -440,7 +188,7 @@ export async function signIn(
   }
 }
 
-export async function signOut(): Promise<{ error: Error | null }> {
+export async function signOut() {
   try {
     await authClient.signOut();
     return { error: null };
@@ -451,16 +199,16 @@ export async function signOut(): Promise<{ error: Error | null }> {
   }
 }
 
-export async function getSession(): Promise<AuthSession | null> {
+export async function getSession() {
   try {
     const session = await authClient.getSession();
-    return session.data as AuthSession | null;
+    return session.data || null;
   } catch {
     return null;
   }
 }
 
-export async function getUser(): Promise<User | null> {
+export async function getUser() {
   const session = await getSession();
   return session?.user ?? null;
 }
@@ -469,9 +217,7 @@ export async function getUser(): Promise<User | null> {
 // SERVER-SIDE AUTH (untuk Astro pages)
 // ============================================
 
-export async function getSessionFromRequest(
-  request: Request
-): Promise<AuthSession | null> {
+export async function getSessionFromRequest(request) {
   try {
     const cookies = request.headers.get('cookie') || '';
     
@@ -487,13 +233,13 @@ export async function getSessionFromRequest(
     }
 
     const data = await response.json();
-    return data as AuthSession;
+    return data;
   } catch {
     return null;
   }
 }
 
-export async function requireAuth(request: Request): Promise<AuthSession> {
+export async function requireAuth(request) {
   const session = await getSessionFromRequest(request);
   
   if (!session) {
@@ -508,10 +254,9 @@ export async function requireAuth(request: Request): Promise<AuthSession> {
   return session;
 }
 
-export async function requireAdmin(request: Request): Promise<AuthSession> {
+export async function requireAdmin(request) {
   const session = await requireAuth(request);
   
-  // Fetch profile to check role
   const cookies = request.headers.get('cookie') || '';
   const response = await fetch(`${API_URL}/api/profile`, {
     headers: { cookie: cookies },
@@ -538,36 +283,18 @@ export async function requireAdmin(request: Request): Promise<AuthSession> {
 }
 ```
 
-### 2.3 API Client
+### 2.2 API Client
 
-File: `src/lib/api.ts`
+File: `src/lib/api.js`
 
-```typescript
-import type { 
-  ApiResponse, 
-  PaginatedResponse,
-  Product, 
-  Order, 
-  Transaction,
-  Profile,
-  Settings,
-  OrderFormData
-} from './types';
-
+```javascript
 const API_URL = import.meta.env.PUBLIC_API_URL;
 
 // ============================================
 // BASE FETCH FUNCTION
 // ============================================
 
-interface FetchOptions extends RequestInit {
-  timeout?: number;
-}
-
-async function fetchApi<T>(
-  endpoint: string,
-  options: FetchOptions = {}
-): Promise<ApiResponse<T>> {
+async function fetchApi(endpoint, options = {}) {
   const { timeout = 10000, ...fetchOptions } = options;
 
   const controller = new AbortController();
@@ -617,30 +344,20 @@ async function fetchApi<T>(
 // PRODUCTS API
 // ============================================
 
-export async function getProducts(
-  category?: string
-): Promise<ApiResponse<Product[]>> {
+export async function getProducts(category) {
   const endpoint = category ? `/api/products/${category}` : '/api/products';
-  return fetchApi<Product[]>(endpoint);
+  return fetchApi(endpoint);
 }
 
-export async function getProductBySlug(
-  slug: string
-): Promise<ApiResponse<Product>> {
-  return fetchApi<Product>(`/api/products/detail/${slug}`);
+export async function getProductBySlug(slug) {
+  return fetchApi(`/api/products/detail/${slug}`);
 }
 
-export async function getProductsByProvider(
-  provider: string
-): Promise<ApiResponse<Product[]>> {
-  return fetchApi<Product[]>(`/api/products/provider/${provider}`);
+export async function getProductsByProvider(provider) {
+  return fetchApi(`/api/products/provider/${provider}`);
 }
 
-export async function checkTargetId(
-  productId: string,
-  targetId: string,
-  targetServer?: string
-): Promise<ApiResponse<{ valid: boolean; name: string }>> {
+export async function checkTargetId(productId, targetId, targetServer) {
   return fetchApi('/api/products/check-target', {
     method: 'POST',
     body: JSON.stringify({ productId, targetId, targetServer }),
@@ -651,38 +368,26 @@ export async function checkTargetId(
 // ORDERS API
 // ============================================
 
-export async function createOrder(
-  data: OrderFormData,
-  cookies?: string
-): Promise<ApiResponse<Order>> {
-  return fetchApi<Order>('/api/orders/create', {
+export async function createOrder(data, cookies) {
+  return fetchApi('/api/orders/create', {
     method: 'POST',
     body: JSON.stringify(data),
     headers: cookies ? { cookie: cookies } : undefined,
   });
 }
 
-export async function getOrder(
-  orderId: string,
-  cookies?: string
-): Promise<ApiResponse<Order>> {
-  return fetchApi<Order>(`/api/orders/${orderId}`, {
+export async function getOrder(orderId, cookies) {
+  return fetchApi(`/api/orders/${orderId}`, {
     headers: cookies ? { cookie: cookies } : undefined,
   });
 }
 
-export async function getOrderByNumber(
-  orderNumber: string
-): Promise<ApiResponse<Order>> {
-  return fetchApi<Order>(`/api/orders/number/${orderNumber}`);
+export async function getOrderByNumber(orderNumber) {
+  return fetchApi(`/api/orders/number/${orderNumber}`);
 }
 
-export async function getUserOrders(
-  cookies?: string,
-  page = 1,
-  limit = 10
-): Promise<PaginatedResponse<Order>> {
-  const response = await fetchApi<Order[]>(
+export async function getUserOrders(cookies, page = 1, limit = 10) {
+  const response = await fetchApi(
     `/api/orders/user/history?page=${page}&limit=${limit}`,
     { headers: cookies ? { cookie: cookies } : undefined }
   );
@@ -695,14 +400,11 @@ export async function getUserOrders(
     };
   }
 
-  return response as unknown as PaginatedResponse<Order>;
+  return response;
 }
 
-export async function cancelOrder(
-  orderId: string,
-  cookies?: string
-): Promise<ApiResponse<Order>> {
-  return fetchApi<Order>(`/api/orders/${orderId}/cancel`, {
+export async function cancelOrder(orderId, cookies) {
+  return fetchApi(`/api/orders/${orderId}/cancel`, {
     method: 'POST',
     headers: cookies ? { cookie: cookies } : undefined,
   });
@@ -712,19 +414,14 @@ export async function cancelOrder(
 // PROFILE API
 // ============================================
 
-export async function getProfile(
-  cookies?: string
-): Promise<ApiResponse<Profile>> {
-  return fetchApi<Profile>('/api/profile', {
+export async function getProfile(cookies) {
+  return fetchApi('/api/profile', {
     headers: cookies ? { cookie: cookies } : undefined,
   });
 }
 
-export async function updateProfile(
-  data: { fullName?: string; phone?: string },
-  cookies?: string
-): Promise<ApiResponse<Profile>> {
-  return fetchApi<Profile>('/api/profile', {
+export async function updateProfile(data, cookies) {
+  return fetchApi('/api/profile', {
     method: 'PATCH',
     body: JSON.stringify(data),
     headers: cookies ? { cookie: cookies } : undefined,
@@ -735,12 +432,8 @@ export async function updateProfile(
 // TRANSACTIONS API
 // ============================================
 
-export async function getTransactions(
-  cookies?: string,
-  page = 1,
-  limit = 20
-): Promise<PaginatedResponse<Transaction>> {
-  const response = await fetchApi<Transaction[]>(
+export async function getTransactions(cookies, page = 1, limit = 20) {
+  const response = await fetchApi(
     `/api/transactions?page=${page}&limit=${limit}`,
     { headers: cookies ? { cookie: cookies } : undefined }
   );
@@ -753,56 +446,38 @@ export async function getTransactions(
     };
   }
 
-  return response as unknown as PaginatedResponse<Transaction>;
+  return response;
 }
 
 // ============================================
 // SETTINGS API
 // ============================================
 
-export async function getPublicSettings(): Promise<ApiResponse<Settings>> {
-  return fetchApi<Settings>('/api/settings/public');
+export async function getPublicSettings() {
+  return fetchApi('/api/settings/public');
 }
 
 // ============================================
 // ADMIN API
 // ============================================
 
-export async function getAdminDashboard(
-  cookies: string
-): Promise<ApiResponse<{
-  totalOrders: number;
-  totalRevenue: number;
-  pendingOrders: number;
-  todayOrders: number;
-}>> {
+export async function getAdminDashboard(cookies) {
   return fetchApi('/api/admin/dashboard', {
     headers: { cookie: cookies },
   });
 }
 
-export async function getAllOrders(
-  cookies: string,
-  page = 1,
-  limit = 20,
-  status?: string
-): Promise<PaginatedResponse<Order>> {
+export async function getAllOrders(cookies, page = 1, limit = 20, status) {
   let endpoint = `/api/admin/orders?page=${page}&limit=${limit}`;
   if (status) endpoint += `&status=${status}`;
   
-  const response = await fetchApi<Order[]>(endpoint, {
+  return fetchApi(endpoint, {
     headers: { cookie: cookies },
   });
-
-  return response as unknown as PaginatedResponse<Order>;
 }
 
-export async function updateOrderStatus(
-  orderId: string,
-  status: string,
-  cookies: string
-): Promise<ApiResponse<Order>> {
-  return fetchApi<Order>(`/api/admin/orders/${orderId}`, {
+export async function updateOrderStatus(orderId, status, cookies) {
+  return fetchApi(`/api/admin/orders/${orderId}`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
     headers: { cookie: cookies },
@@ -810,13 +485,12 @@ export async function updateOrderStatus(
 }
 ```
 
-### 2.4 Supabase Client (untuk Realtime)
+### 2.3 Supabase Client (untuk Realtime)
 
-File: `src/lib/supabase.ts`
+File: `src/lib/supabase.js`
 
-```typescript
-import { createClient, RealtimeChannel } from '@supabase/supabase-js';
-import type { Order, Profile } from './types';
+```javascript
+import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -833,10 +507,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
 // REALTIME SUBSCRIPTIONS
 // ============================================
 
-export function subscribeToOrderUpdates(
-  userId: string,
-  onUpdate: (order: Order) => void
-): RealtimeChannel | null {
+export function subscribeToOrderUpdates(userId, onUpdate) {
   if (!supabase) return null;
 
   const channel = supabase
@@ -850,7 +521,7 @@ export function subscribeToOrderUpdates(
         filter: `user_id=eq.${userId}`,
       },
       (payload) => {
-        onUpdate(payload.new as Order);
+        onUpdate(payload.new);
       }
     )
     .subscribe();
@@ -858,10 +529,7 @@ export function subscribeToOrderUpdates(
   return channel;
 }
 
-export function subscribeToBalanceUpdates(
-  userId: string,
-  onUpdate: (balance: number) => void
-): RealtimeChannel | null {
+export function subscribeToBalanceUpdates(userId, onUpdate) {
   if (!supabase) return null;
 
   const channel = supabase
@@ -875,8 +543,7 @@ export function subscribeToBalanceUpdates(
         filter: `id=eq.${userId}`,
       },
       (payload) => {
-        const profile = payload.new as Profile;
-        onUpdate(profile.balance);
+        onUpdate(payload.new.balance);
       }
     )
     .subscribe();
@@ -884,9 +551,7 @@ export function subscribeToBalanceUpdates(
   return channel;
 }
 
-export function subscribeToNewOrders(
-  onNewOrder: (order: Order) => void
-): RealtimeChannel | null {
+export function subscribeToNewOrders(onNewOrder) {
   if (!supabase) return null;
 
   const channel = supabase
@@ -899,7 +564,7 @@ export function subscribeToNewOrders(
         table: 'orders',
       },
       (payload) => {
-        onNewOrder(payload.new as Order);
+        onNewOrder(payload.new);
       }
     )
     .subscribe();
@@ -907,25 +572,25 @@ export function subscribeToNewOrders(
   return channel;
 }
 
-export function unsubscribe(channel: RealtimeChannel | null): void {
+export function unsubscribe(channel) {
   if (channel && supabase) {
     supabase.removeChannel(channel);
   }
 }
 ```
 
-### 2.5 Utility Functions
+### 2.4 Utility Functions
 
-File: `src/lib/utils.ts`
+File: `src/lib/utils.js`
 
-```typescript
-import { clsx, type ClassValue } from 'clsx';
+```javascript
+import { clsx } from 'clsx';
 
 // ============================================
 // CLASS NAME UTILITY
 // ============================================
 
-export function cn(...inputs: ClassValue[]): string {
+export function cn(...inputs) {
   return clsx(inputs);
 }
 
@@ -933,7 +598,7 @@ export function cn(...inputs: ClassValue[]): string {
 // CURRENCY FORMATTING
 // ============================================
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -942,7 +607,7 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatNumber(num: number): string {
+export function formatNumber(num) {
   return new Intl.NumberFormat('id-ID').format(num);
 }
 
@@ -950,14 +615,14 @@ export function formatNumber(num: number): string {
 // DATE FORMATTING
 // ============================================
 
-export function formatDate(date: string | Date): string {
+export function formatDate(date) {
   return new Intl.DateTimeFormat('id-ID', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(date));
 }
 
-export function formatDateShort(date: string | Date): string {
+export function formatDateShort(date) {
   return new Intl.DateTimeFormat('id-ID', {
     day: 'numeric',
     month: 'short',
@@ -965,14 +630,14 @@ export function formatDateShort(date: string | Date): string {
   }).format(new Date(date));
 }
 
-export function formatTime(date: string | Date): string {
+export function formatTime(date) {
   return new Intl.DateTimeFormat('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(date));
 }
 
-export function getRelativeTime(date: string | Date): string {
+export function getRelativeTime(date) {
   const now = new Date();
   const then = new Date(date);
   const diffInSeconds = Math.floor((now.getTime() - then.getTime()) / 1000);
@@ -989,8 +654,8 @@ export function getRelativeTime(date: string | Date): string {
 // STATUS HELPERS
 // ============================================
 
-export function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
+export function getStatusColor(status) {
+  const colors = {
     pending: 'bg-yellow-100 text-yellow-800',
     processing: 'bg-blue-100 text-blue-800',
     success: 'bg-green-100 text-green-800',
@@ -1004,8 +669,8 @@ export function getStatusColor(status: string): string {
   return colors[status] || 'bg-gray-100 text-gray-800';
 }
 
-export function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
+export function getStatusLabel(status) {
+  const labels = {
     pending: 'Menunggu',
     processing: 'Diproses',
     success: 'Berhasil',
@@ -1023,17 +688,17 @@ export function getStatusLabel(status: string): string {
 // VALIDATION HELPERS
 // ============================================
 
-export function isValidEmail(email: string): boolean {
+export function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
 
-export function isValidPhone(phone: string): boolean {
+export function isValidPhone(phone) {
   const phoneRegex = /^(\+62|62|0)8[1-9][0-9]{7,10}$/;
   return phoneRegex.test(phone.replace(/\s/g, ''));
 }
 
-export function sanitizePhone(phone: string): string {
+export function sanitizePhone(phone) {
   let cleaned = phone.replace(/\D/g, '');
   if (cleaned.startsWith('0')) {
     cleaned = '62' + cleaned.slice(1);
@@ -1047,7 +712,7 @@ export function sanitizePhone(phone: string): string {
 // SLUG HELPERS
 // ============================================
 
-export function createSlug(text: string): string {
+export function createSlug(text) {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -1058,8 +723,8 @@ export function createSlug(text: string): string {
 // PROVIDER HELPERS
 // ============================================
 
-export function getProviderName(provider: string): string {
-  const names: Record<string, string> = {
+export function getProviderName(provider) {
+  const names = {
     'mobile-legends': 'Mobile Legends',
     'free-fire': 'Free Fire',
     'pubg-mobile': 'PUBG Mobile',
@@ -1079,8 +744,8 @@ export function getProviderName(provider: string): string {
   return names[provider] || provider;
 }
 
-export function getCategoryName(category: string): string {
-  const names: Record<string, string> = {
+export function getCategoryName(category) {
+  const names = {
     game: 'Voucher Game',
     pulsa: 'Pulsa & Data',
     ewallet: 'E-Wallet',
@@ -1094,12 +759,11 @@ export function getCategoryName(category: string): string {
 // COPY TO CLIPBOARD
 // ============================================
 
-export async function copyToClipboard(text: string): Promise<boolean> {
+export async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    // Fallback for older browsers
     const textArea = document.createElement('textarea');
     textArea.value = text;
     textArea.style.position = 'fixed';
@@ -1121,13 +785,10 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 // DEBOUNCE
 // ============================================
 
-export function debounce<T extends (...args: unknown[]) => unknown>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout>;
+export function debounce(func, wait) {
+  let timeout;
 
-  return function (...args: Parameters<T>) {
+  return function (...args) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
@@ -1144,8 +805,8 @@ File: `src/pages/auth/login.astro`
 
 ```astro
 ---
-import AuthLayout from '@layouts/AuthLayout.astro';
-import { getSessionFromRequest } from '@lib/auth-client';
+import AuthLayout from '../../layouts/AuthLayout.astro';
+import { getSessionFromRequest } from '../../lib/auth-client.js';
 
 // Redirect if already logged in
 const session = await getSessionFromRequest(Astro.request);
@@ -1261,16 +922,16 @@ const redirectTo = Astro.url.searchParams.get('redirect') || '/dashboard';
 </AuthLayout>
 
 <script>
-  import { signIn } from '@lib/auth-client';
+  import { signIn } from '../../lib/auth-client.js';
 
-  const form = document.getElementById('loginForm') as HTMLFormElement;
-  const errorAlert = document.getElementById('errorAlert') as HTMLDivElement;
-  const errorMessage = document.getElementById('errorMessage') as HTMLParagraphElement;
-  const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
-  const btnText = document.getElementById('btnText') as HTMLSpanElement;
-  const btnSpinner = document.getElementById('btnSpinner') as SVGElement;
-  const togglePassword = document.getElementById('togglePassword') as HTMLButtonElement;
-  const passwordInput = document.getElementById('password') as HTMLInputElement;
+  const form = document.getElementById('loginForm');
+  const errorAlert = document.getElementById('errorAlert');
+  const errorMessage = document.getElementById('errorMessage');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const btnSpinner = document.getElementById('btnSpinner');
+  const togglePassword = document.getElementById('togglePassword');
+  const passwordInput = document.getElementById('password');
 
   // Toggle password visibility
   togglePassword.addEventListener('click', () => {
@@ -1287,9 +948,9 @@ const redirectTo = Astro.url.searchParams.get('redirect') || '/dashboard';
 
     // Get form data
     const formData = new FormData(form);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const redirectTo = formData.get('redirectTo') as string;
+    const email = formData.get('email');
+    const password = formData.get('password');
+    const redirectTo = formData.get('redirectTo');
 
     // Validate
     if (!email || !password) {
@@ -1309,7 +970,6 @@ const redirectTo = Astro.url.searchParams.get('redirect') || '/dashboard';
       }
 
       if (data) {
-        // Redirect on success
         window.location.href = redirectTo;
       }
     } catch (err) {
@@ -1319,18 +979,17 @@ const redirectTo = Astro.url.searchParams.get('redirect') || '/dashboard';
     }
   });
 
-  function showError(message: string) {
+  function showError(message) {
     errorMessage.textContent = message;
     errorAlert.classList.remove('hidden');
     errorAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  function setLoading(loading: boolean) {
+  function setLoading(loading) {
     submitBtn.disabled = loading;
     btnText.textContent = loading ? 'Memproses...' : 'Masuk';
     btnSpinner.classList.toggle('hidden', !loading);
     
-    // Disable form inputs
     const inputs = form.querySelectorAll('input');
     inputs.forEach(input => input.disabled = loading);
   }
@@ -1343,8 +1002,8 @@ File: `src/pages/auth/register.astro`
 
 ```astro
 ---
-import AuthLayout from '@layouts/AuthLayout.astro';
-import { getSessionFromRequest } from '@lib/auth-client';
+import AuthLayout from '../../layouts/AuthLayout.astro';
+import { getSessionFromRequest } from '../../lib/auth-client.js';
 
 // Redirect if already logged in
 const session = await getSessionFromRequest(Astro.request);
@@ -1498,16 +1157,16 @@ if (session) {
 </AuthLayout>
 
 <script>
-  import { signUp } from '@lib/auth-client';
-  import { isValidEmail } from '@lib/utils';
+  import { signUp } from '../../lib/auth-client.js';
+  import { isValidEmail } from '../../lib/utils.js';
 
-  const form = document.getElementById('registerForm') as HTMLFormElement;
-  const errorAlert = document.getElementById('errorAlert') as HTMLDivElement;
-  const errorMessage = document.getElementById('errorMessage') as HTMLParagraphElement;
-  const successAlert = document.getElementById('successAlert') as HTMLDivElement;
-  const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement;
-  const btnText = document.getElementById('btnText') as HTMLSpanElement;
-  const btnSpinner = document.getElementById('btnSpinner') as SVGElement;
+  const form = document.getElementById('registerForm');
+  const errorAlert = document.getElementById('errorAlert');
+  const errorMessage = document.getElementById('errorMessage');
+  const successAlert = document.getElementById('successAlert');
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const btnSpinner = document.getElementById('btnSpinner');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1518,10 +1177,10 @@ if (session) {
 
     // Get form data
     const formData = new FormData(form);
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const confirmPassword = formData.get('confirmPassword') as string;
+    const name = formData.get('name');
+    const email = formData.get('email');
+    const password = formData.get('password');
+    const confirmPassword = formData.get('confirmPassword');
 
     // Validate
     if (!name || name.length < 3) {
@@ -1568,13 +1227,13 @@ if (session) {
     }
   });
 
-  function showError(message: string) {
+  function showError(message) {
     errorMessage.textContent = message;
     errorAlert.classList.remove('hidden');
     errorAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  function setLoading(loading: boolean) {
+  function setLoading(loading) {
     submitBtn.disabled = loading;
     btnText.textContent = loading ? 'Memproses...' : 'Daftar';
     btnSpinner.classList.toggle('hidden', !loading);
@@ -1587,11 +1246,11 @@ if (session) {
 
 ### 3.3 Protected Route Middleware
 
-File: `src/middleware.ts`
+File: `src/middleware.js`
 
-```typescript
+```javascript
 import { defineMiddleware } from 'astro:middleware';
-import { getSessionFromRequest } from './lib/auth-client';
+import { getSessionFromRequest } from './lib/auth-client.js';
 
 const protectedRoutes = ['/dashboard', '/admin', '/checkout'];
 const authRoutes = ['/auth/login', '/auth/register'];
@@ -1601,7 +1260,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
   const request = context.request;
 
-  // Check if route needs protection
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
   const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
@@ -1609,18 +1267,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (isProtectedRoute || isAuthRoute) {
     const session = await getSessionFromRequest(request);
 
-    // Redirect logged-in users away from auth pages
     if (isAuthRoute && session) {
       return context.redirect('/dashboard');
     }
 
-    // Redirect non-authenticated users to login
     if (isProtectedRoute && !session) {
       const redirectUrl = `/auth/login?redirect=${encodeURIComponent(pathname)}`;
       return context.redirect(redirectUrl);
     }
 
-    // Check admin access
     if (isAdminRoute && session) {
       const API_URL = import.meta.env.PUBLIC_API_URL;
       const cookies = request.headers.get('cookie') || '';
@@ -1644,7 +1299,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
 
-    // Add session to locals for use in pages
     if (session) {
       context.locals.session = session;
       context.locals.user = session.user;
@@ -1653,35 +1307,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   return next();
 });
-```
-
-File: `src/env.d.ts` (tambahan untuk locals)
-
-```typescript
-/// <reference path="../.astro/types.d.ts" />
-
-import type { AuthSession, User } from './lib/types';
-
-declare global {
-  namespace App {
-    interface Locals {
-      session?: AuthSession;
-      user?: User;
-    }
-  }
-}
-
-interface ImportMetaEnv {
-  readonly PUBLIC_API_URL: string;
-  readonly PUBLIC_SUPABASE_URL: string;
-  readonly PUBLIC_SUPABASE_ANON_KEY: string;
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
-export {};
 ```
 
 ---
@@ -1694,16 +1319,9 @@ File: `src/layouts/Layout.astro`
 
 ```astro
 ---
-import '@styles/global.css';
-import Navbar from '@components/widgets/Navbar.astro';
-import Footer from '@components/widgets/Footer.astro';
-
-interface Props {
-  title: string;
-  description?: string;
-  image?: string;
-  noIndex?: boolean;
-}
+import '../styles/global.css';
+import Navbar from '../components/widgets/Navbar.astro';
+import Footer from '../components/widgets/Footer.astro';
 
 const { 
   title, 
@@ -1762,30 +1380,49 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 </html>
 ```
 
-### 4.2 Dashboard Layout
+### 4.2 Auth Layout
+
+File: `src/layouts/AuthLayout.astro`
+
+```astro
+---
+import '../styles/global.css';
+
+const { title } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <title>{title} | Boba Store</title>
+  <meta name="robots" content="noindex, nofollow" />
+</head>
+<body class="min-h-screen bg-gray-50">
+  <slot />
+</body>
+</html>
+```
+
+### 4.3 Dashboard Layout
 
 File: `src/layouts/DashboardLayout.astro`
 
 ```astro
 ---
-import '@styles/global.css';
-import { getSessionFromRequest } from '@lib/auth-client';
-import { getProfile } from '@lib/api';
-import { formatCurrency } from '@lib/utils';
-import type { Profile } from '@lib/types';
-
-interface Props {
-  title: string;
-}
+import '../styles/global.css';
+import { getSessionFromRequest } from '../lib/auth-client.js';
+import { getProfile } from '../lib/api.js';
+import { formatCurrency } from '../lib/utils.js';
 
 const { title } = Astro.props;
 
-// Get session (middleware already validates)
 const session = await getSessionFromRequest(Astro.request);
 const cookies = Astro.request.headers.get('cookie') || '';
 
-// Fetch profile
-let profile: Profile | null = null;
+let profile = null;
 if (session) {
   const profileRes = await getProfile(cookies);
   if (profileRes.success && profileRes.data) {
@@ -1937,15 +1574,14 @@ const currentPath = Astro.url.pathname;
   <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
   <script>
-    import { signOut } from '@lib/auth-client';
+    import { signOut } from '../lib/auth-client.js';
 
-    // Sidebar toggle
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const openBtn = document.getElementById('openSidebar');
     const closeBtn = document.getElementById('closeSidebar');
 
-    function toggleSidebar(open: boolean) {
+    function toggleSidebar(open) {
       sidebar?.classList.toggle('-translate-x-full', !open);
       overlay?.classList.toggle('hidden', !open);
     }
@@ -1954,7 +1590,6 @@ const currentPath = Astro.url.pathname;
     closeBtn?.addEventListener('click', () => toggleSidebar(false));
     overlay?.addEventListener('click', () => toggleSidebar(false));
 
-    // Logout
     const logoutBtn = document.getElementById('logoutBtn');
     logoutBtn?.addEventListener('click', async () => {
       const confirmed = confirm('Yakin ingin keluar?');
@@ -1970,24 +1605,13 @@ const currentPath = Astro.url.pathname;
 </html>
 ```
 
-### 4.3 Button Component
+### 4.4 Button Component
 
 File: `src/components/atoms/Button.astro`
 
 ```astro
 ---
-import { cn } from '@lib/utils';
-
-interface Props {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
-  size?: 'sm' | 'md' | 'lg';
-  type?: 'button' | 'submit' | 'reset';
-  disabled?: boolean;
-  loading?: boolean;
-  fullWidth?: boolean;
-  class?: string;
-  href?: string;
-}
+import { cn } from '../../lib/utils.js';
 
 const {
   variant = 'primary',
@@ -2025,8 +1649,6 @@ const baseStyles = cn(
   fullWidth && 'w-full',
   className
 );
-
-const Tag = href ? 'a' : 'button';
 ---
 
 {href ? (
@@ -2052,34 +1674,13 @@ const Tag = href ? 'a' : 'button';
 )}
 ```
 
-### 4.4 Input Component
+### 4.5 Input Component
 
 File: `src/components/atoms/Input.astro`
 
 ```astro
 ---
-import { cn } from '@lib/utils';
-
-interface Props {
-  type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'search';
-  name: string;
-  id?: string;
-  value?: string | number;
-  placeholder?: string;
-  required?: boolean;
-  disabled?: boolean;
-  readonly?: boolean;
-  minlength?: number;
-  maxlength?: number;
-  min?: number;
-  max?: number;
-  pattern?: string;
-  autocomplete?: string;
-  error?: string;
-  label?: string;
-  hint?: string;
-  class?: string;
-}
+import { cn } from '../../lib/utils.js';
 
 const {
   type = 'text',
@@ -2154,19 +1755,13 @@ const inputStyles = cn(
 </div>
 ```
 
-### 4.5 Card Component
+### 4.6 Card Component
 
 File: `src/components/atoms/Card.astro`
 
 ```astro
 ---
-import { cn } from '@lib/utils';
-
-interface Props {
-  padding?: 'none' | 'sm' | 'md' | 'lg';
-  hover?: boolean;
-  class?: string;
-}
+import { cn } from '../../lib/utils.js';
 
 const {
   padding = 'md',
@@ -2194,19 +1789,13 @@ const styles = cn(
 </div>
 ```
 
-### 4.6 Badge Component
+### 4.7 Badge Component
 
 File: `src/components/atoms/Badge.astro`
 
 ```astro
 ---
-import { cn } from '@lib/utils';
-
-interface Props {
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
-  size?: 'sm' | 'md';
-  class?: string;
-}
+import { cn } from '../../lib/utils.js';
 
 const {
   variant = 'default',
@@ -2240,20 +1829,15 @@ const styles = cn(
 </span>
 ```
 
-### 4.7 Product Card
+### 4.8 Product Card
 
 File: `src/components/widgets/ProductCard.astro`
 
 ```astro
 ---
-import Card from '@components/atoms/Card.astro';
-import Badge from '@components/atoms/Badge.astro';
-import { formatCurrency } from '@lib/utils';
-import type { Product } from '@lib/types';
-
-interface Props {
-  product: Product;
-}
+import Card from '../atoms/Card.astro';
+import Badge from '../atoms/Badge.astro';
+import { formatCurrency } from '../../lib/utils.js';
 
 const { product } = Astro.props;
 
@@ -2315,14 +1899,14 @@ const isAvailable = product.stockStatus === 'available';
 </a>
 ```
 
-### 4.8 Navbar
+### 4.9 Navbar
 
 File: `src/components/widgets/Navbar.astro`
 
 ```astro
 ---
-import { getSessionFromRequest } from '@lib/auth-client';
-import Button from '@components/atoms/Button.astro';
+import { getSessionFromRequest } from '../../lib/auth-client.js';
+import Button from '../atoms/Button.astro';
 
 const session = await getSessionFromRequest(Astro.request);
 const user = session?.user;
@@ -2424,6 +2008,64 @@ const currentPath = Astro.url.pathname;
 </script>
 ```
 
+### 4.10 Footer
+
+File: `src/components/widgets/Footer.astro`
+
+```astro
+---
+const currentYear = new Date().getFullYear();
+---
+
+<footer class="bg-gray-900 text-gray-400">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <!-- Brand -->
+      <div class="col-span-2 md:col-span-1">
+        <a href="/" class="flex items-center gap-2">
+          <span class="text-xl font-bold text-white">Boba Store</span>
+        </a>
+        <p class="mt-4 text-sm">
+          Platform top-up game, pulsa, dan e-wallet tercepat dan terpercaya.
+        </p>
+      </div>
+
+      <!-- Links -->
+      <div>
+        <h3 class="text-white font-semibold mb-4">Produk</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/products/game" class="hover:text-white">Voucher Game</a></li>
+          <li><a href="/products/pulsa" class="hover:text-white">Pulsa & Data</a></li>
+          <li><a href="/products/ewallet" class="hover:text-white">E-Wallet</a></li>
+          <li><a href="/products/pln" class="hover:text-white">Token PLN</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-white font-semibold mb-4">Bantuan</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/faq" class="hover:text-white">FAQ</a></li>
+          <li><a href="/contact" class="hover:text-white">Hubungi Kami</a></li>
+          <li><a href="/track" class="hover:text-white">Lacak Order</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-white font-semibold mb-4">Legal</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/terms" class="hover:text-white">Syarat & Ketentuan</a></li>
+          <li><a href="/privacy" class="hover:text-white">Kebijakan Privasi</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="mt-8 pt-8 border-t border-gray-800 text-sm text-center">
+      <p>&copy; {currentYear} Boba Store. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+```
+
 ---
 
 ## 5. Pages
@@ -2434,28 +2076,24 @@ File: `src/pages/index.astro`
 
 ```astro
 ---
-import Layout from '@layouts/Layout.astro';
-import Card from '@components/atoms/Card.astro';
-import ProductCard from '@components/widgets/ProductCard.astro';
-import Button from '@components/atoms/Button.astro';
-import { getProducts } from '@lib/api';
-import { getCategoryName, getProviderName } from '@lib/utils';
-import type { Product, ProductCategory } from '@lib/types';
+import Layout from '../layouts/Layout.astro';
+import Card from '../components/atoms/Card.astro';
+import ProductCard from '../components/widgets/ProductCard.astro';
+import Button from '../components/atoms/Button.astro';
+import { getProducts } from '../lib/api.js';
+import { getCategoryName, getProviderName } from '../lib/utils.js';
 
-// Fetch products
 const productsResponse = await getProducts();
 const allProducts = productsResponse.success ? productsResponse.data || [] : [];
 
-// Group products by category
-const categories: ProductCategory[] = ['game', 'pulsa', 'ewallet'];
-const productsByCategory = categories.reduce((acc, category) => {
-  acc[category] = allProducts
+const categories = ['game', 'pulsa', 'ewallet'];
+const productsByCategory = {};
+categories.forEach(category => {
+  productsByCategory[category] = allProducts
     .filter(p => p.category === category)
     .slice(0, 8);
-  return acc;
-}, {} as Record<ProductCategory, Product[]>);
+});
 
-// Featured products (with discount)
 const featuredProducts = allProducts
   .filter(p => p.discount > 0)
   .slice(0, 4);
@@ -2564,371 +2202,22 @@ const featuredProducts = allProducts
 </Layout>
 ```
 
-### 5.2 Product Category Page
-
-File: `src/pages/products/[category].astro`
-
-```astro
----
-import Layout from '@layouts/Layout.astro';
-import ProductCard from '@components/widgets/ProductCard.astro';
-import { getProducts } from '@lib/api';
-import { getCategoryName, getProviderName } from '@lib/utils';
-import type { Product, ProductCategory } from '@lib/types';
-
-// Validate category
-const { category } = Astro.params;
-const validCategories: ProductCategory[] = ['game', 'pulsa', 'ewallet', 'pln', 'voucher'];
-
-if (!category || !validCategories.includes(category as ProductCategory)) {
-  return Astro.redirect('/404');
-}
-
-// Fetch products
-const response = await getProducts(category);
-const products = response.success ? response.data || [] : [];
-
-// Group by provider
-const providers = [...new Set(products.map(p => p.provider))];
-const productsByProvider = providers.reduce((acc, provider) => {
-  acc[provider] = products.filter(p => p.provider === provider);
-  return acc;
-}, {} as Record<string, Product[]>);
-
-const categoryName = getCategoryName(category);
----
-
-<Layout 
-  title={categoryName}
-  description={`Top-up ${categoryName} murah dan cepat di Boba Store`}
->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Header -->
-    <div class="mb-8">
-      <nav class="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        <a href="/" class="hover:text-blue-600">Home</a>
-        <span>/</span>
-        <span class="text-gray-900">{categoryName}</span>
-      </nav>
-      <h1 class="text-3xl font-bold text-gray-900">{categoryName}</h1>
-      <p class="mt-2 text-gray-600">
-        Pilih provider dan nominal yang kamu inginkan
-      </p>
-    </div>
-
-    {products.length === 0 ? (
-      <div class="text-center py-12">
-        <p class="text-gray-500">Belum ada produk tersedia</p>
-      </div>
-    ) : (
-      <div class="space-y-12">
-        {providers.map(provider => (
-          <section>
-            <div class="flex items-center gap-4 mb-6">
-              <h2 class="text-xl font-bold text-gray-900">
-                {getProviderName(provider)}
-              </h2>
-              <div class="flex-1 h-px bg-gray-200" />
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {productsByProvider[provider].map(product => (
-                <ProductCard product={product} />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    )}
-  </div>
-</Layout>
-```
-
-### 5.3 Product Detail Page
-
-File: `src/pages/products/[slug].astro`
-
-```astro
----
-import Layout from '@layouts/Layout.astro';
-import Card from '@components/atoms/Card.astro';
-import Button from '@components/atoms/Button.astro';
-import Input from '@components/atoms/Input.astro';
-import Badge from '@components/atoms/Badge.astro';
-import { getProductBySlug, getPublicSettings } from '@lib/api';
-import { getSessionFromRequest } from '@lib/auth-client';
-import { formatCurrency, getProviderName, getCategoryName } from '@lib/utils';
-
-const { slug } = Astro.params;
-
-if (!slug) {
-  return Astro.redirect('/404');
-}
-
-// Fetch product
-const productRes = await getProductBySlug(slug);
-if (!productRes.success || !productRes.data) {
-  return Astro.redirect('/404');
-}
-
-const product = productRes.data;
-
-// Fetch settings
-const settingsRes = await getPublicSettings();
-const adminFee = settingsRes.success ? settingsRes.data?.adminFee || 1000 : 1000;
-
-// Check auth
-const session = await getSessionFromRequest(Astro.request);
-const isLoggedIn = !!session;
-
-const finalPrice = product.price - product.discount;
-const hasDiscount = product.discount > 0;
-const isAvailable = product.stockStatus === 'available';
----
-
-<Layout 
-  title={product.name}
-  description={product.description || `Beli ${product.name} murah di Boba Store`}
->
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Breadcrumb -->
-    <nav class="flex items-center gap-2 text-sm text-gray-500 mb-8">
-      <a href="/" class="hover:text-blue-600">Home</a>
-      <span>/</span>
-      <a href={`/products/${product.category}`} class="hover:text-blue-600">
-        {getCategoryName(product.category)}
-      </a>
-      <span>/</span>
-      <span class="text-gray-900 truncate max-w-[200px]">{product.name}</span>
-    </nav>
-
-    <div class="grid lg:grid-cols-2 gap-8 lg:gap-12">
-      <!-- Product Image -->
-      <div>
-        <Card padding="none">
-          <div class="aspect-square bg-gray-100 rounded-xl overflow-hidden">
-            {product.imageUrl ? (
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                class="w-full h-full object-cover"
-              />
-            ) : (
-              <div class="flex items-center justify-center h-full text-gray-400">
-                <svg class="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <!-- Product Info & Order Form -->
-      <div class="space-y-6">
-        <div>
-          <div class="flex items-center gap-2 mb-2">
-            <Badge variant="info">{getProviderName(product.provider)}</Badge>
-            {!isAvailable && <Badge variant="danger">Stok Habis</Badge>}
-          </div>
-          <h1 class="text-2xl lg:text-3xl font-bold text-gray-900">{product.name}</h1>
-        </div>
-
-        <!-- Price -->
-        <div class="flex items-baseline gap-3">
-          {hasDiscount && (
-            <span class="text-lg text-gray-400 line-through">
-              {formatCurrency(product.price)}
-            </span>
-          )}
-          <span class="text-3xl font-bold text-blue-600">
-            {formatCurrency(finalPrice)}
-          </span>
-          {hasDiscount && (
-            <Badge variant="danger">
-              Hemat {formatCurrency(product.discount)}
-            </Badge>
-          )}
-        </div>
-
-        {product.description && (
-          <p class="text-gray-600">{product.description}</p>
-        )}
-
-        <!-- Order Form -->
-        <Card>
-          <form id="orderForm" class="space-y-4">
-            <input type="hidden" name="productId" value={product.id} />
-            <input type="hidden" name="productName" value={product.name} />
-            <input type="hidden" name="unitPrice" value={finalPrice} />
-            <input type="hidden" name="adminFee" value={adminFee} />
-
-            <!-- Target ID -->
-            <Input
-              name="targetId"
-              label={product.category === 'pulsa' ? 'Nomor HP' : 'User ID / Player ID'}
-              placeholder={product.category === 'pulsa' ? '08xxxxxxxxxx' : 'Masukkan User ID'}
-              required
-            />
-
-            <!-- Server ID (for games) -->
-            {product.category === 'game' && (
-              <Input
-                name="targetServer"
-                label="Server ID (Opsional)"
-                placeholder="Masukkan Server ID"
-              />
-            )}
-
-            <!-- Quantity -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
-              <div class="flex items-center gap-2">
-                <button type="button" id="decreaseQty" class="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50">
-                  -
-                </button>
-                <input
-                  type="number"
-                  name="quantity"
-                  id="quantity"
-                  value="1"
-                  min={product.minQty}
-                  max={product.maxQty}
-                  class="w-20 text-center border border-gray-300 rounded-lg py-2"
-                  readonly
-                />
-                <button type="button" id="increaseQty" class="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50">
-                  +
-                </button>
-              </div>
-            </div>
-
-            <!-- Price Summary -->
-            <div class="border-t pt-4 space-y-2">
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-600">Harga</span>
-                <span id="subtotal">{formatCurrency(finalPrice)}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-gray-600">Biaya Admin</span>
-                <span>{formatCurrency(adminFee)}</span>
-              </div>
-              <div class="flex justify-between text-lg font-bold pt-2 border-t">
-                <span>Total</span>
-                <span id="total" class="text-blue-600">{formatCurrency(finalPrice + adminFee)}</span>
-              </div>
-            </div>
-
-            <!-- Error Message -->
-            <div id="errorMessage" class="hidden p-3 rounded-lg bg-red-50 text-red-700 text-sm"></div>
-
-            <!-- Submit Button -->
-            {isLoggedIn ? (
-              <Button type="submit" fullWidth disabled={!isAvailable} id="submitBtn">
-                {isAvailable ? 'Beli Sekarang' : 'Stok Habis'}
-              </Button>
-            ) : (
-              <Button href={`/auth/login?redirect=/products/${slug}`} fullWidth>
-                Login untuk Membeli
-              </Button>
-            )}
-          </form>
-        </Card>
-      </div>
-    </div>
-  </div>
-</Layout>
-
-<script define:vars={{ unitPrice: finalPrice, adminFee, minQty: product.minQty, maxQty: product.maxQty }}>
-  const qtyInput = document.getElementById('quantity');
-  const decreaseBtn = document.getElementById('decreaseQty');
-  const increaseBtn = document.getElementById('increaseQty');
-  const subtotalEl = document.getElementById('subtotal');
-  const totalEl = document.getElementById('total');
-  const form = document.getElementById('orderForm');
-  const submitBtn = document.getElementById('submitBtn');
-  const errorEl = document.getElementById('errorMessage');
-
-  function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  }
-
-  function updatePrice() {
-    const qty = parseInt(qtyInput.value) || 1;
-    const subtotal = unitPrice * qty;
-    const total = subtotal + adminFee;
-    
-    subtotalEl.textContent = formatCurrency(subtotal);
-    totalEl.textContent = formatCurrency(total);
-  }
-
-  decreaseBtn?.addEventListener('click', () => {
-    const current = parseInt(qtyInput.value) || 1;
-    if (current > minQty) {
-      qtyInput.value = current - 1;
-      updatePrice();
-    }
-  });
-
-  increaseBtn?.addEventListener('click', () => {
-    const current = parseInt(qtyInput.value) || 1;
-    if (current < maxQty) {
-      qtyInput.value = current + 1;
-      updatePrice();
-    }
-  });
-
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    errorEl.classList.add('hidden');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Memproses...';
-
-    const formData = new FormData(form);
-    const data = {
-      productId: formData.get('productId'),
-      targetId: formData.get('targetId'),
-      targetServer: formData.get('targetServer') || undefined,
-      quantity: parseInt(formData.get('quantity')) || 1,
-      paymentMethod: 'xendit', // Will select on checkout
-    };
-
-    try {
-      // Store order data and redirect to checkout
-      sessionStorage.setItem('pendingOrder', JSON.stringify(data));
-      window.location.href = '/checkout';
-    } catch (err) {
-      errorEl.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
-      errorEl.classList.remove('hidden');
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Beli Sekarang';
-    }
-  });
-</script>
-```
-
-### 5.4 Dashboard Page
+### 5.2 Dashboard Page
 
 File: `src/pages/dashboard/index.astro`
 
 ```astro
 ---
-import DashboardLayout from '@layouts/DashboardLayout.astro';
-import Card from '@components/atoms/Card.astro';
-import Badge from '@components/atoms/Badge.astro';
-import { getSessionFromRequest } from '@lib/auth-client';
-import { getProfile, getUserOrders } from '@lib/api';
-import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '@lib/utils';
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import Card from '../../components/atoms/Card.astro';
+import Badge from '../../components/atoms/Badge.astro';
+import { getSessionFromRequest } from '../../lib/auth-client.js';
+import { getProfile, getUserOrders } from '../../lib/api.js';
+import { formatCurrency, formatDate, getStatusLabel } from '../../lib/utils.js';
 
-// Get session (middleware already validates)
 const session = await getSessionFromRequest(Astro.request);
 const cookies = Astro.request.headers.get('cookie') || '';
 
-// Fetch data
 const [profileRes, ordersRes] = await Promise.all([
   getProfile(cookies),
   getUserOrders(cookies, 1, 5),
@@ -3042,8 +2331,7 @@ Astro menggunakan SSR secara default, data fetching dilakukan di frontmatter:
 
 ```astro
 ---
-// Ini berjalan di server
-import { getProducts } from '@lib/api';
+import { getProducts } from '../lib/api.js';
 
 const response = await getProducts('game');
 const products = response.success ? response.data : [];
@@ -3062,7 +2350,6 @@ Untuk data yang perlu diupdate tanpa reload:
 
 ```astro
 ---
-// Server-side initial data
 const initialOrders = await getOrders();
 ---
 
@@ -3088,12 +2375,10 @@ const initialOrders = await getOrders();
 
 ### 7.1 Order Status Updates
 
-File: `src/pages/dashboard/orders/[id].astro` (partial)
-
 ```astro
 ---
-import { getOrder } from '@lib/api';
-import { getSessionFromRequest } from '@lib/auth-client';
+import { getOrder } from '../lib/api.js';
+import { getSessionFromRequest } from '../lib/auth-client.js';
 
 const session = await getSessionFromRequest(Astro.request);
 const cookies = Astro.request.headers.get('cookie') || '';
@@ -3108,8 +2393,8 @@ const order = orderRes.data;
 </div>
 
 <script>
-  import { subscribeToOrderUpdates, unsubscribe } from '@lib/supabase';
-  import { getStatusLabel, getStatusColor } from '@lib/utils';
+  import { subscribeToOrderUpdates, unsubscribe } from '../lib/supabase.js';
+  import { getStatusLabel, getStatusColor } from '../lib/utils.js';
 
   const container = document.getElementById('order-status');
   const orderId = container?.dataset.orderId;
@@ -3124,7 +2409,6 @@ const order = orderRes.data;
           badge.className = getStatusColor(updatedOrder.status);
         }
 
-        // Show notification
         if (updatedOrder.status === 'success') {
           showToast('Order berhasil! Cek akun game kamu.', 'success');
         } else if (updatedOrder.status === 'failed') {
@@ -3133,13 +2417,12 @@ const order = orderRes.data;
       }
     });
 
-    // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
       unsubscribe(channel);
     });
   }
 
-  function showToast(message: string, type: 'success' | 'error') {
+  function showToast(message, type) {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `p-4 rounded-lg shadow-lg ${
@@ -3159,9 +2442,9 @@ const order = orderRes.data;
 
 ### 8.1 Form Validation dengan Zod
 
-File: `src/lib/validation.ts`
+File: `src/lib/validation.js`
 
-```typescript
+```javascript
 import { z } from 'zod';
 
 export const loginSchema = z.object({
@@ -3194,11 +2477,6 @@ export const profileSchema = z.object({
     .optional()
     .or(z.literal('')),
 });
-
-export type LoginFormData = z.infer<typeof loginSchema>;
-export type RegisterFormData = z.infer<typeof registerSchema>;
-export type OrderFormData = z.infer<typeof orderSchema>;
-export type ProfileFormData = z.infer<typeof profileSchema>;
 ```
 
 ---
@@ -3211,8 +2489,8 @@ File: `src/pages/404.astro`
 
 ```astro
 ---
-import Layout from '@layouts/Layout.astro';
-import Button from '@components/atoms/Button.astro';
+import Layout from '../layouts/Layout.astro';
+import Button from '../components/atoms/Button.astro';
 ---
 
 <Layout title="Halaman Tidak Ditemukan" noIndex>
@@ -3237,11 +2515,6 @@ File: `src/components/atoms/Loading.astro`
 
 ```astro
 ---
-interface Props {
-  size?: 'sm' | 'md' | 'lg';
-  text?: string;
-}
-
 const { size = 'md', text } = Astro.props;
 
 const sizes = {
@@ -3283,9 +2556,8 @@ const sizes = {
 
 ```astro
 ---
-// Gunakan Astro Image
 import { Image } from 'astro:assets';
-import productImage from '@assets/product.png';
+import productImage from '../assets/product.png';
 ---
 
 <Image 
@@ -3300,8 +2572,7 @@ import productImage from '@assets/product.png';
 
 ### 10.2 Prefetching
 
-```astro
----
+```javascript
 // astro.config.mjs
 export default defineConfig({
   prefetch: {
@@ -3309,9 +2580,9 @@ export default defineConfig({
     defaultStrategy: 'viewport',
   },
 });
----
+```
 
-<!-- Di halaman -->
+```astro
 <a href="/products" data-astro-prefetch>Products</a>
 ```
 
@@ -3326,8 +2597,7 @@ export default defineConfig({
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
-    "check": "astro check"
+    "preview": "astro preview"
   }
 }
 ```
@@ -3335,9 +2605,6 @@ export default defineConfig({
 ### 11.2 Build & Deploy
 
 ```bash
-# Type check
-npm run check
-
 # Build
 npm run build
 
@@ -3363,7 +2630,6 @@ PUBLIC_SUPABASE_ANON_KEY=xxx
 ### Setup
 - [ ] Inisialisasi Astro project
 - [ ] Install dependencies
-- [ ] Konfigurasi TypeScript
 - [ ] Setup environment variables
 
 ### Authentication
@@ -3403,6 +2669,6 @@ PUBLIC_SUPABASE_ANON_KEY=xxx
 
 ---
 
-*Tutorial ini merupakan panduan lengkap frontend untuk Boba.Store*
+*Tutorial ini merupakan panduan lengkap frontend untuk Boba.Store (JavaScript)*
 
 *Terakhir diperbarui: Desember 2024*

@@ -1,0 +1,171 @@
+---
+import Dashboard from "../../layouts/Dashboard.astro";
+import { Search, Eye, CheckCircle, XCircle, Clock, Package, ChevronLeft, ChevronRight } from "lucide-astro";
+import { formatCurrency, formatDate } from "../../lib/utils";
+
+// TODO: Fetch from API
+const orders = [
+  { id: 'ORD-1234', user: 'john@example.com', product: 'Mobile Legends', item: '86 Diamonds', targetId: '12345678', status: 'pending', amount: 25000, date: '2024-01-15T10:30:00' },
+  { id: 'ORD-1235', user: 'jane@example.com', product: 'Free Fire', item: '100 Diamonds', targetId: '87654321', status: 'processing', amount: 15000, date: '2024-01-15T09:20:00' },
+  { id: 'ORD-1236', user: 'bob@example.com', product: 'PUBG Mobile', item: '60 UC', targetId: '11223344', status: 'completed', amount: 50000, date: '2024-01-14T16:45:00' },
+  { id: 'ORD-1237', user: 'alice@example.com', product: 'Genshin Impact', item: '300 Genesis', targetId: '55667788', status: 'failed', amount: 75000, date: '2024-01-14T14:00:00' },
+];
+
+const statusColors = {
+  pending: 'text-yellow-400 bg-yellow-400/10',
+  processing: 'text-blue-400 bg-blue-400/10',
+  completed: 'text-green-400 bg-green-400/10',
+  failed: 'text-red-400 bg-red-400/10',
+};
+
+const statusLabels = {
+  pending: 'Pending',
+  processing: 'Diproses',
+  completed: 'Selesai',
+  failed: 'Gagal',
+};
+---
+
+<Dashboard title="Kelola Pesanan - Boba.Store">
+  <div class="space-y-8">
+    <!-- Header -->
+    <div>
+      <h1 class="text-3xl font-bold text-white">Kelola Pesanan</h1>
+      <p class="text-white/60 mt-1">Lihat dan proses semua pesanan</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="glass rounded-xl p-4 text-center">
+        <p class="text-2xl font-bold text-yellow-400">12</p>
+        <p class="text-sm text-white/60">Pending</p>
+      </div>
+      <div class="glass rounded-xl p-4 text-center">
+        <p class="text-2xl font-bold text-blue-400">5</p>
+        <p class="text-sm text-white/60">Diproses</p>
+      </div>
+      <div class="glass rounded-xl p-4 text-center">
+        <p class="text-2xl font-bold text-green-400">1,200</p>
+        <p class="text-sm text-white/60">Selesai</p>
+      </div>
+      <div class="glass rounded-xl p-4 text-center">
+        <p class="text-2xl font-bold text-red-400">17</p>
+        <p class="text-sm text-white/60">Gagal</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="glass rounded-2xl p-4">
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="flex-1 relative">
+          <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+          <input
+            type="text"
+            placeholder="Cari ID pesanan atau email..."
+            class="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+        <select class="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors min-w-[150px]">
+          <option value="" class="bg-[var(--color-background)]">Semua Status</option>
+          <option value="pending" class="bg-[var(--color-background)]">Pending</option>
+          <option value="processing" class="bg-[var(--color-background)]">Diproses</option>
+          <option value="completed" class="bg-[var(--color-background)]">Selesai</option>
+          <option value="failed" class="bg-[var(--color-background)]">Gagal</option>
+        </select>
+        <input
+          type="date"
+          class="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+        />
+      </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-white/60 text-sm border-b border-white/10 bg-black/20">
+              <th class="px-6 py-4 font-medium">ID Pesanan</th>
+              <th class="px-6 py-4 font-medium">User</th>
+              <th class="px-6 py-4 font-medium">Produk</th>
+              <th class="px-6 py-4 font-medium">Target ID</th>
+              <th class="px-6 py-4 font-medium">Status</th>
+              <th class="px-6 py-4 font-medium">Tanggal</th>
+              <th class="px-6 py-4 font-medium text-right">Total</th>
+              <th class="px-6 py-4 font-medium text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            {orders.map(order => (
+              <tr class="hover:bg-white/5 transition-colors">
+                <td class="px-6 py-4">
+                  <span class="text-[var(--color-primary)] font-medium">{order.id}</span>
+                </td>
+                <td class="px-6 py-4 text-white/70">{order.user}</td>
+                <td class="px-6 py-4">
+                  <div>
+                    <p class="text-white">{order.product}</p>
+                    <p class="text-sm text-white/50">{order.item}</p>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-white/70 font-mono">{order.targetId}</td>
+                <td class="px-6 py-4">
+                  <span class={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status]}`}>
+                    {statusLabels[order.status]}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-white/70 text-sm">{formatDate(order.date)}</td>
+                <td class="px-6 py-4 text-right text-white font-medium">{formatCurrency(order.amount)}</td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center justify-end gap-2">
+                    <button class="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors" title="Detail">
+                      <Eye class="w-4 h-4" />
+                    </button>
+                    {order.status === 'pending' && (
+                      <>
+                        <button class="p-2 rounded-lg hover:bg-green-400/10 text-white/70 hover:text-green-400 transition-colors" title="Selesaikan">
+                          <CheckCircle class="w-4 h-4" />
+                        </button>
+                        <button class="p-2 rounded-lg hover:bg-red-400/10 text-white/70 hover:text-red-400 transition-colors" title="Batalkan">
+                          <XCircle class="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {orders.length === 0 && (
+        <div class="text-center py-16">
+          <Package class="w-16 h-16 text-white/20 mx-auto mb-4" />
+          <h3 class="text-xl font-bold text-white mb-2">Belum Ada Pesanan</h3>
+          <p class="text-white/60">Pesanan akan muncul di sini.</p>
+        </div>
+      )}
+
+      <!-- Pagination -->
+      {orders.length > 0 && (
+        <div class="px-6 py-4 border-t border-white/10 flex items-center justify-between">
+          <p class="text-sm text-white/60">Menampilkan 1-4 dari 1,234 pesanan</p>
+          <div class="flex items-center gap-2">
+            <button class="p-2 rounded-lg glass glass-hover text-white/70 hover:text-white disabled:opacity-50" disabled>
+              <ChevronLeft class="w-5 h-5" />
+            </button>
+            <button class="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white font-medium">1</button>
+            <button class="px-4 py-2 rounded-lg glass glass-hover text-white/70 hover:text-white">2</button>
+            <button class="px-4 py-2 rounded-lg glass glass-hover text-white/70 hover:text-white">3</button>
+            <span class="text-white/40">...</span>
+            <button class="px-4 py-2 rounded-lg glass glass-hover text-white/70 hover:text-white">124</button>
+            <button class="p-2 rounded-lg glass glass-hover text-white/70 hover:text-white">
+              <ChevronRight class="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+</Dashboard>

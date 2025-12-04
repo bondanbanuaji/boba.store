@@ -1,11 +1,11 @@
-import { pgTable, text, boolean, timestamp, varchar, decimal, integer, uuid, pgEnum, jsonb, inet, check, index } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+const { pgTable, text, boolean, timestamp, varchar, decimal, integer, uuid, pgEnum, jsonb, inet, check, index } = require('drizzle-orm/pg-core');
+const { sql } = require('drizzle-orm');
 
 // ============================================
 // BETTER AUTH TABLES
 // ============================================
 
-export const user = pgTable('user', {
+const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -18,7 +18,7 @@ export const user = pgTable('user', {
   createdAtIdx: index('idx_user_created_at').on(table.createdAt),
 }));
 
-export const session = pgTable('session', {
+const session = pgTable('session', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
@@ -33,7 +33,7 @@ export const session = pgTable('session', {
   expiresAtIdx: index('idx_session_expires_at').on(table.expiresAt),
 }));
 
-export const account = pgTable('account', {
+const account = pgTable('account', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   accountId: text('account_id').notNull(),
@@ -51,7 +51,7 @@ export const account = pgTable('account', {
   providerIdx: index('idx_account_provider').on(table.providerId),
 }));
 
-export const verification = pgTable('verification', {
+const verification = pgTable('verification', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
@@ -64,10 +64,9 @@ export const verification = pgTable('verification', {
 // APPLICATION TABLES
 // ============================================
 
-// Role enum
-export const roleEnum = pgEnum('role', ['user', 'admin', 'reseller']);
+const roleEnum = pgEnum('role', ['user', 'admin', 'reseller']);
 
-export const profiles = pgTable('profiles', {
+const profiles = pgTable('profiles', {
   id: text('id').primaryKey().references(() => user.id, { onDelete: 'cascade' }),
   fullName: text('full_name'),
   phone: varchar('phone', { length: 15 }),
@@ -82,7 +81,7 @@ export const profiles = pgTable('profiles', {
   phoneIdx: index('idx_profiles_phone').on(table.phone),
 }));
 
-export const products = pgTable('products', {
+const products = pgTable('products', {
   id: uuid('id').defaultRandom().primaryKey(),
   category: varchar('category', { length: 50 }).notNull(),
   provider: varchar('provider', { length: 50 }).notNull(),
@@ -100,23 +99,15 @@ export const products = pgTable('products', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
-  categoryCheck: check('category_check', sql`${table.category} IN ('game', 'pulsa', 'ewallet', 'pln', 'voucher')`),
-  priceCheck: check('price_check', sql`${table.price} > 0`),
-  discountCheck: check('discount_check', sql`${table.discount} >= 0`),
-  validDiscount: check('valid_discount', sql`${table.discount} <= ${table.price}`),
-  stockStatusCheck: check('stock_status_check', sql`${table.stockStatus} IN ('available', 'limited', 'empty')`),
-  minQtyCheck: check('min_qty_check', sql`${table.minQty} >= 1`),
-  maxQtyCheck: check('max_qty_check', sql`${table.maxQty} >= 1`),
-  validQtyRange: check('valid_qty_range', sql`${table.maxQty} >= ${table.minQty}`),
   categoryIdx: index('idx_products_category').on(table.category),
   providerIdx: index('idx_products_provider').on(table.provider),
   slugIdx: index('idx_products_slug').on(table.slug),
   skuIdx: index('idx_products_sku').on(table.sku),
-  isActiveIdx: index('idx_products_is_active').on(table.isActive).where(sql`${table.isActive} = true`),
+  isActiveIdx: index('idx_products_is_active').on(table.isActive),
   categoryActiveIdx: index('idx_products_category_active').on(table.category, table.isActive),
 }));
 
-export const orders = pgTable('orders', {
+const orders = pgTable('orders', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
   userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
@@ -163,14 +154,6 @@ export const orders = pgTable('orders', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   completedAt: timestamp('completed_at', { withTimezone: true }),
 }, (table) => ({
-  quantityCheck: check('quantity_check', sql`${table.quantity} >= 1`),
-  unitPriceCheck: check('unit_price_check', sql`${table.unitPrice} >= 0`),
-  discountCheck: check('discount_check', sql`${table.discount} >= 0`),
-  adminFeeCheck: check('admin_fee_check', sql`${table.adminFee} >= 0`),
-  totalPriceCheck: check('total_price_check', sql`${table.totalPrice} >= 0`),
-  statusCheck: check('status_check', sql`${table.status} IN ('pending', 'processing', 'success', 'failed', 'cancelled', 'refunded')`),
-  paymentStatusCheck: check('payment_status_check', sql`${table.paymentStatus} IN ('unpaid', 'pending', 'paid', 'expired', 'refunded')`),
-  validTotal: check('valid_total', sql`${table.totalPrice} = (${table.unitPrice} * ${table.quantity}) - ${table.discount} + ${table.adminFee}`),
   userIdIdx: index('idx_orders_user_id').on(table.userId),
   orderNumberIdx: index('idx_orders_order_number').on(table.orderNumber),
   statusIdx: index('idx_orders_status').on(table.status),
@@ -182,7 +165,7 @@ export const orders = pgTable('orders', {
   adminViewIdx: index('idx_orders_admin_view').on(table.status, table.paymentStatus, table.createdAt),
 }));
 
-export const transactions = pgTable('transactions', {
+const transactions = pgTable('transactions', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   orderId: uuid('order_id').references(() => orders.id, { onDelete: 'set null' }),
@@ -198,8 +181,6 @@ export const transactions = pgTable('transactions', {
   
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
-  typeCheck: check('type_check', sql`${table.type} IN ('topup', 'purchase', 'refund', 'bonus', 'adjustment')`),
-  validBalanceChange: check('valid_balance_change', sql`${table.balanceAfter} = ${table.balanceBefore} + ${table.amount}`),
   userIdIdx: index('idx_transactions_user_id').on(table.userId),
   orderIdIdx: index('idx_transactions_order_id').on(table.orderId),
   typeIdx: index('idx_transactions_type').on(table.type),
@@ -207,7 +188,7 @@ export const transactions = pgTable('transactions', {
   userCreatedIdx: index('idx_transactions_user_created').on(table.userId, table.createdAt),
 }));
 
-export const settings = pgTable('settings', {
+const settings = pgTable('settings', {
   key: varchar('key', { length: 100 }).primaryKey(),
   value: text('value').notNull(),
   valueType: varchar('value_type', { length: 20 }).default('string'),
@@ -216,11 +197,10 @@ export const settings = pgTable('settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   updatedBy: text('updated_by').references(() => user.id, { onDelete: 'set null' }),
 }, (table) => ({
-  valueTypeCheck: check('value_type_check', sql`${table.valueType} IN ('string', 'number', 'boolean', 'json')`),
-  isPublicIdx: index('idx_settings_is_public').on(table.isPublic).where(sql`${table.isPublic} = true`),
+  isPublicIdx: index('idx_settings_is_public').on(table.isPublic),
 }));
 
-export const auditLogs = pgTable('audit_logs', {
+const auditLogs = pgTable('audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
   action: varchar('action', { length: 50 }).notNull(),
@@ -236,3 +216,17 @@ export const auditLogs = pgTable('audit_logs', {
   tableNameIdx: index('idx_audit_table_name').on(table.tableName),
   createdAtIdx: index('idx_audit_created_at').on(table.createdAt),
 }));
+
+module.exports = {
+  user,
+  session,
+  account,
+  verification,
+  roleEnum,
+  profiles,
+  products,
+  orders,
+  transactions,
+  settings,
+  auditLogs,
+};

@@ -1,0 +1,192 @@
+---
+import { Menu, X, ShoppingBag, User, LogOut } from 'lucide-astro';
+import { cn } from '../../lib/utils';
+
+const navLinks = [
+  { href: '/', label: 'Home' },
+  { href: '/products', label: 'Games' },
+  { href: '/track', label: 'Lacak Pesanan' },
+];
+
+const currentPath = Astro.url.pathname;
+
+function isActive(href: string): boolean {
+  if (href === '/') {
+    return currentPath === '/';
+  }
+  return currentPath.startsWith(href);
+}
+
+// TODO: Get auth state from session
+interface AuthUser {
+  name: string;
+  email: string;
+}
+
+// Temporary mock - replace with actual session data
+const user = null as AuthUser | null;
+const isLoggedIn = !!user;
+
+// Helper untuk menghindari error TypeScript
+const userName = (user as AuthUser | null)?.name ?? 'User';
+const userEmail = (user as AuthUser | null)?.email ?? '';
+---
+
+<nav class="fixed top-0 left-0 right-0 z-50 transition-all duration-300" id="navbar">
+  <div class="container mx-auto px-4">
+    <div class="flex items-center justify-between h-20">
+      <!-- Logo -->
+      <a href="/" class="text-2xl font-bold tracking-tighter hover:opacity-80 transition-opacity">
+        <span class="text-gradient">Boba</span>.Store
+      </a>
+
+      <!-- Desktop Menu -->
+      <div class="hidden md:flex items-center gap-8">
+        {navLinks.map(link => (
+          <a 
+            href={link.href}
+            class={cn(
+              "text-sm font-medium transition-colors",
+              isActive(link.href) 
+                ? "text-white" 
+                : "text-white/70 hover:text-white"
+            )}
+            aria-current={isActive(link.href) ? "page" : undefined}
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
+
+      <!-- Auth & Actions -->
+      <div class="hidden md:flex items-center gap-4">
+        {isLoggedIn ? (
+          <div class="relative group">
+            <button class="flex items-center gap-2 px-4 py-2 rounded-full glass glass-hover text-sm font-medium">
+              <User class="w-4 h-4" />
+              <span>{userName}</span>
+            </button>
+            <!-- Dropdown would go here -->
+          </div>
+        ) : (
+          <div class="flex items-center gap-3">
+            <a 
+              href="/auth/login" 
+              class="px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+            >
+              Masuk
+            </a>
+            <a 
+              href="/auth/register" 
+              class="px-5 py-2 rounded-full bg-white text-black text-sm font-bold hover:bg-white/90 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+            >
+              Daftar
+            </a>
+          </div>
+        )}
+      </div>
+
+      <!-- Mobile Menu Button -->
+      <button 
+        id="mobile-menu-btn"
+        class="md:hidden p-2 text-white/70 hover:text-white transition-colors"
+        aria-label="Toggle menu"
+      >
+        <Menu class="w-6 h-6" id="menu-icon" />
+        <X class="w-6 h-6 hidden" id="close-icon" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div 
+    id="mobile-menu" 
+    class="md:hidden fixed inset-x-0 top-20 bottom-0 bg-black/95 backdrop-blur-xl translate-x-full transition-transform duration-300 flex flex-col p-6 border-t border-white/10"
+  >
+    <div class="flex flex-col gap-6">
+      {navLinks.map(link => (
+        <a 
+          href={link.href}
+          class={cn(
+            "text-lg font-medium transition-colors",
+            isActive(link.href) 
+              ? "text-white" 
+              : "text-white/70 hover:text-white"
+          )}
+          aria-current={isActive(link.href) ? "page" : undefined}
+        >
+          {link.label}
+        </a>
+      ))}
+      
+      <div class="h-px bg-white/10 my-2"></div>
+      
+      {isLoggedIn ? (
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center gap-3 text-white">
+            <div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+              <User class="w-5 h-5" />
+            </div>
+            <div>
+              <p class="font-medium">{userName}</p>
+              <p class="text-xs text-white/50">{userEmail}</p>
+            </div>
+          </div>
+          <button class="w-full py-3 rounded-xl glass glass-hover text-red-400 flex items-center justify-center gap-2">
+            <LogOut class="w-4 h-4" />
+            Keluar
+          </button>
+        </div>
+      ) : (
+        <div class="flex flex-col gap-3">
+          <a 
+            href="/auth/login" 
+            class="w-full py-3 rounded-xl glass glass-hover text-center font-medium"
+          >
+            Masuk
+          </a>
+          <a 
+            href="/auth/register" 
+            class="w-full py-3 rounded-xl bg-white text-black text-center font-bold"
+          >
+            Daftar
+          </a>
+        </div>
+      )}
+    </div>
+  </div>
+</nav>
+
+<script>
+  const navbar = document.getElementById('navbar');
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const mobileMenu = document.getElementById('mobile-menu');
+  const menuIcon = document.getElementById('menu-icon');
+  const closeIcon = document.getElementById('close-icon');
+
+  // Scroll Effect
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 20) {
+      navbar?.classList.add('bg-black/50', 'backdrop-blur-md', 'border-b', 'border-white/5');
+    } else {
+      navbar?.classList.remove('bg-black/50', 'backdrop-blur-md', 'border-b', 'border-white/5');
+    }
+  });
+
+  // Mobile Menu Toggle
+  mobileMenuBtn?.addEventListener('click', () => {
+    const isOpen = !mobileMenu?.classList.contains('translate-x-full');
+    
+    if (isOpen) {
+      mobileMenu?.classList.add('translate-x-full');
+      menuIcon?.classList.remove('hidden');
+      closeIcon?.classList.add('hidden');
+      document.body.style.overflow = '';
+    } else {
+      mobileMenu?.classList.remove('translate-x-full');
+      menuIcon?.classList.add('hidden');
+      closeIcon?.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+  });
+</script>

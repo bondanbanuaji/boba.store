@@ -1,15 +1,57 @@
+---
+import { ViewTransitions } from "astro:transitions";
+import Navbar from "../components/widgets/Navbar.astro";
+import Footer from "../components/widgets/Footer.astro";
+import "../styles/global.css";
+
+interface Props {
+	title?: string;
+	description?: string;
+}
+
+const { 
+	title = "Boba.Store - Top Up Game Termurah & Terpercaya",
+	description = "Platform top-up game dan produk digital termurah di Indonesia. Proses otomatis, layanan 24 jam, dan berbagai metode pembayaran."
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site || 'https://boba.store');
+---
+
 <!doctype html>
-<html lang="en">
+<html lang="id">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="stylesheet" href="/frontend/src/styles/global.css">
+		<link rel="canonical" href={canonicalURL} />
+
+		<!-- SEO Meta -->
+		<meta name="description" content={description} />
+		<meta name="robots" content="index, follow" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Boba.store</title>
+
+		<!-- Open Graph -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content={canonicalURL} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:site_name" content="Boba.Store" />
+
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={title} />
+		<meta name="twitter:description" content={description} />
+
+		<title>{title}</title>
+		
+		<ViewTransitions />
 	</head>
-	<body>
-		<slot />
+	<body class="bg-[var(--color-background)] text-[var(--color-text-main)]">
+		<Navbar />
+		<main class="flex-1 pt-20" transition:animate="fade">
+			<slot />
+		</main>
+		<Footer />
 	</body>
 </html>
 

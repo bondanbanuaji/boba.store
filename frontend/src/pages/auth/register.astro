@@ -1,0 +1,196 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { User, Mail, Lock, Eye, EyeOff, Phone } from "lucide-astro";
+---
+
+<Layout title="Daftar - Boba.Store">
+  <section class="min-h-[80vh] flex items-center justify-center py-12">
+    <div class="container mx-auto px-4">
+      <div class="max-w-md mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+          <a href="/" class="text-3xl font-bold tracking-tighter inline-block mb-6">
+            <span class="text-gradient">Boba</span>.Store
+          </a>
+          <h1 class="text-2xl font-bold text-white mb-2">Buat Akun Baru</h1>
+          <p class="text-white/60">Daftar untuk menikmati berbagai keuntungan</p>
+        </div>
+
+        <!-- Register Form -->
+        <div class="glass rounded-2xl p-8">
+          <form id="register-form" class="space-y-6">
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Nama Lengkap</label>
+              <div class="relative">
+                <User class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  placeholder="John Doe"
+                  class="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Email</label>
+              <div class="relative">
+                <Mail class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="email@example.com"
+                  class="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">No. WhatsApp (Opsional)</label>
+              <div class="relative">
+                <Phone class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="08xxxxxxxxxx"
+                  class="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Password</label>
+              <div class="relative">
+                <Lock class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type="password"
+                  name="password"
+                  id="password"
+                  required
+                  minlength="8"
+                  placeholder="Minimal 8 karakter"
+                  class="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-12 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                />
+                <button
+                  type="button"
+                  id="toggle-password"
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                >
+                  <Eye class="w-5 h-5" id="eye-icon" />
+                  <EyeOff class="w-5 h-5 hidden" id="eye-off-icon" />
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Konfirmasi Password</label>
+              <div class="relative">
+                <Lock class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  id="confirmPassword"
+                  required
+                  placeholder="Ulangi password"
+                  class="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" name="terms" required class="w-4 h-4 mt-1 rounded border-white/10 bg-black/20 text-[var(--color-primary)] focus:ring-[var(--color-primary)]" />
+                <span class="text-sm text-white/70">
+                  Saya menyetujui <a href="/terms" class="text-[var(--color-primary)] hover:underline">Syarat & Ketentuan</a> dan <a href="/privacy" class="text-[var(--color-primary)] hover:underline">Kebijakan Privasi</a>
+                </span>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full py-4 rounded-xl bg-[var(--color-primary)] text-white font-bold text-lg hover:brightness-110 transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+            >
+              Daftar
+            </button>
+          </form>
+
+          <div class="mt-6 text-center">
+            <p class="text-white/60">
+              Sudah punya akun?
+              <a href="/auth/login" class="text-[var(--color-primary)] hover:underline font-medium">
+                Masuk
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <!-- Back to Home -->
+        <div class="text-center mt-8">
+          <a href="/" class="text-white/60 hover:text-white transition-colors text-sm">
+            ← Kembali ke Beranda
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  const form = document.getElementById('register-form') as HTMLFormElement;
+  const passwordInput = document.getElementById('password') as HTMLInputElement;
+  const confirmPasswordInput = document.getElementById('confirmPassword') as HTMLInputElement;
+  const toggleBtn = document.getElementById('toggle-password');
+  const eyeIcon = document.getElementById('eye-icon');
+  const eyeOffIcon = document.getElementById('eye-off-icon');
+
+  toggleBtn?.addEventListener('click', () => {
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+    eyeIcon?.classList.toggle('hidden');
+    eyeOffIcon?.classList.toggle('hidden');
+  });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+    if (formData.get('password') !== formData.get('confirmPassword')) {
+      alert('Password tidak cocok!');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Memproses...';
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.get('name'),
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          password: formData.get('password'),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Pendaftaran berhasil! Silakan login.');
+        window.location.href = '/auth/login';
+      } else {
+        alert(result.error || 'Pendaftaran gagal');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Daftar';
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan. Silakan coba lagi.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Daftar';
+    }
+  });
+</script>

@@ -18,7 +18,7 @@
 
 ---
 
-1## 1. Setup Awal Supabase
+## 1. Setup Awal Supabase
 
 ### 1.1 Membuat Project Supabase
 
@@ -420,83 +420,76 @@ Seharusnya muncul tabel:
 
 ## 3. Row Level Security (RLS)
 
-### 3.1 Konsep RLS
+> **⚠️ CATATAN REVISI**
+> 
+> Bagian ##3 sampai ##8 direvisi untuk menggunakan **terminal command + SQL files** agar lebih cepat dan simpel.
+> 
+> **Alasan perubahan:**
+> - Tidak perlu copy-paste SQL satu-satu ke Supabase Dashboard
+> - Eksekusi batch lebih cepat (satset!)
+> - Lebih mudah di-maintain dan version control
+> - Menghindari human error saat copy-paste manual
+> 
+> **Kesulitan pendekatan lama:**
+> - Terlalu banyak SQL yang harus di-copy manual
+> - Kompleks dan rawan error
+> - Tidak praktis untuk development workflow
 
-Row Level Security (RLS) adalah fitur PostgreSQL yang membatasi akses data per-row berdasarkan kondisi tertentu. Ini penting untuk:
+### 3.1 Setup SQL Files
 
-- **Keamanan**: User hanya bisa akses data miliknya
-- **Multi-tenancy**: Isolasi data antar user
-- **Compliance**: Memenuhi standar keamanan data
+Buat folder untuk menyimpan SQL files:
 
-**Penting**: Karena kita menggunakan Better Auth (bukan Supabase Auth), kita perlu custom approach untuk RLS.
+```bash
+cd backend
+mkdir -p drizzle/sql
+```
 
-### 3.2 Custom Session Function
+### 3.2 Buat File SQL - RLS & Functions
 
-Better Auth menyimpan session di tabel `session`. Kita buat function untuk mendapatkan current user:
+Buat file `backend/drizzle/sql/01-rls-functions.sql`:
 
-```sql
+```bash
+cat > drizzle/sql/01-rls-functions.sql << 'EOF'
 -- ============================================
 -- RLS HELPER FUNCTIONS
 -- ============================================
+CREATE SCHEMA IF NOT EXISTS auth;
 
--- Function untuk get current user ID dari request header
--- Digunakan ketika query langsung dari Supabase client
 CREATE OR REPLACE FUNCTION auth.get_current_user_id()
-RETURNS TEXT
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-AS $$
-DECLARE
-    current_user_id TEXT;
+RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+DECLARE current_user_id TEXT;
 BEGIN
-    -- Cek dari session table berdasarkan token di header
-    -- Token dikirim via request header 'x-session-token'
-    SELECT user_id INTO current_user_id
-    FROM "session"
+    SELECT user_id INTO current_user_id FROM "session"
     WHERE token = current_setting('request.headers', true)::json->>'x-session-token'
       AND expires_at > NOW();
-    
     RETURN current_user_id;
 END;
 $$;
 
--- Function untuk cek apakah user adalah admin
 CREATE OR REPLACE FUNCTION auth.is_admin()
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-AS $$
-DECLARE
-    user_role VARCHAR(20);
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+DECLARE user_role VARCHAR(20);
 BEGIN
-    SELECT role INTO user_role
-    FROM profiles
-    WHERE id = auth.get_current_user_id();
-    
+    SELECT role INTO user_role FROM profiles WHERE id = auth.get_current_user_id();
     RETURN user_role = 'admin';
 END;
 $$;
 
--- Function untuk cek apakah user sudah login
 CREATE OR REPLACE FUNCTION auth.is_authenticated()
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-AS $$
-BEGIN
-    RETURN auth.get_current_user_id() IS NOT NULL;
-END;
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER STABLE AS $$
+BEGIN RETURN auth.get_current_user_id() IS NOT NULL; END;
 $$;
+EOF
 ```
 
-### 3.3 RLS Policies
+### 3.3 Buat File SQL - Enable RLS & Policies
 
-```sql
+Buat file `backend/drizzle/sql/02-rls-policies.sql`:
+
+```bash
+cat > drizzle/sql/02-rls-policies.sql << 'EOF'
 -- ============================================
--- ENABLE RLS ON ALL TABLES
+-- ENABLE RLS
 -- ============================================
 ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "session" ENABLE ROW LEVEL SECURITY;
@@ -509,584 +502,245 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- ============================================
--- USER TABLE POLICIES
--- ============================================
--- User bisa lihat data sendiri
-CREATE POLICY "users_select_own" ON "user"
-    FOR SELECT
-    USING (id = auth.get_current_user_id());
+-- USER POLICIES
+CREATE POLICY "users_select_own" ON "user" FOR SELECT USING (id = auth.get_current_user_id());
+CREATE POLICY "users_select_admin" ON "user" FOR SELECT USING (auth.is_admin());
+CREATE POLICY "users_update_own" ON "user" FOR UPDATE USING (id = auth.get_current_user_id());
 
--- Admin bisa lihat semua user
-CREATE POLICY "users_select_admin" ON "user"
-    FOR SELECT
-    USING (auth.is_admin());
+-- SESSION POLICIES
+CREATE POLICY "sessions_select_own" ON "session" FOR SELECT USING (user_id = auth.get_current_user_id());
+CREATE POLICY "sessions_delete_own" ON "session" FOR DELETE USING (user_id = auth.get_current_user_id());
 
--- User bisa update data sendiri
-CREATE POLICY "users_update_own" ON "user"
-    FOR UPDATE
-    USING (id = auth.get_current_user_id())
-    WITH CHECK (id = auth.get_current_user_id());
+-- ACCOUNT POLICIES
+CREATE POLICY "accounts_select_own" ON "account" FOR SELECT USING (user_id = auth.get_current_user_id());
 
--- ============================================
--- SESSION TABLE POLICIES
--- ============================================
--- User bisa lihat session sendiri
-CREATE POLICY "sessions_select_own" ON "session"
-    FOR SELECT
-    USING (user_id = auth.get_current_user_id());
+-- PROFILES POLICIES
+CREATE POLICY "profiles_select_own" ON profiles FOR SELECT USING (id = auth.get_current_user_id());
+CREATE POLICY "profiles_select_admin" ON profiles FOR SELECT USING (auth.is_admin());
+CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (id = auth.get_current_user_id());
+CREATE POLICY "profiles_update_admin" ON profiles FOR UPDATE USING (auth.is_admin());
 
--- User bisa hapus session sendiri (logout)
-CREATE POLICY "sessions_delete_own" ON "session"
-    FOR DELETE
-    USING (user_id = auth.get_current_user_id());
+-- PRODUCTS POLICIES (public read for active)
+CREATE POLICY "products_select_public" ON products FOR SELECT USING (is_active = TRUE);
+CREATE POLICY "products_select_admin" ON products FOR SELECT USING (auth.is_admin());
+CREATE POLICY "products_insert_admin" ON products FOR INSERT WITH CHECK (auth.is_admin());
+CREATE POLICY "products_update_admin" ON products FOR UPDATE USING (auth.is_admin());
+CREATE POLICY "products_delete_admin" ON products FOR DELETE USING (auth.is_admin());
 
--- ============================================
--- ACCOUNT TABLE POLICIES
--- ============================================
--- User bisa lihat account sendiri
-CREATE POLICY "accounts_select_own" ON "account"
-    FOR SELECT
-    USING (user_id = auth.get_current_user_id());
+-- ORDERS POLICIES
+CREATE POLICY "orders_select_own" ON orders FOR SELECT USING (user_id = auth.get_current_user_id());
+CREATE POLICY "orders_select_admin" ON orders FOR SELECT USING (auth.is_admin());
+CREATE POLICY "orders_insert_auth" ON orders FOR INSERT WITH CHECK (auth.is_authenticated() AND user_id = auth.get_current_user_id());
+CREATE POLICY "orders_update_own" ON orders FOR UPDATE USING (user_id = auth.get_current_user_id() AND status = 'pending');
+CREATE POLICY "orders_update_admin" ON orders FOR UPDATE USING (auth.is_admin());
 
--- ============================================
--- PROFILES TABLE POLICIES
--- ============================================
--- User bisa lihat profile sendiri
-CREATE POLICY "profiles_select_own" ON profiles
-    FOR SELECT
-    USING (id = auth.get_current_user_id());
+-- TRANSACTIONS POLICIES
+CREATE POLICY "transactions_select_own" ON transactions FOR SELECT USING (user_id = auth.get_current_user_id());
+CREATE POLICY "transactions_select_admin" ON transactions FOR SELECT USING (auth.is_admin());
 
--- Admin bisa lihat semua profile
-CREATE POLICY "profiles_select_admin" ON profiles
-    FOR SELECT
-    USING (auth.is_admin());
+-- SETTINGS POLICIES
+CREATE POLICY "settings_select_public" ON settings FOR SELECT USING (is_public = TRUE);
+CREATE POLICY "settings_select_admin" ON settings FOR SELECT USING (auth.is_admin());
+CREATE POLICY "settings_all_admin" ON settings FOR ALL USING (auth.is_admin());
 
--- User bisa update profile sendiri (kecuali balance dan role)
-CREATE POLICY "profiles_update_own" ON profiles
-    FOR UPDATE
-    USING (id = auth.get_current_user_id())
-    WITH CHECK (id = auth.get_current_user_id());
-
--- Admin bisa update semua profile
-CREATE POLICY "profiles_update_admin" ON profiles
-    FOR UPDATE
-    USING (auth.is_admin());
-
--- ============================================
--- PRODUCTS TABLE POLICIES
--- ============================================
--- Semua orang bisa lihat produk aktif (public)
-CREATE POLICY "products_select_public" ON products
-    FOR SELECT
-    USING (is_active = TRUE);
-
--- Admin bisa lihat semua produk (termasuk inactive)
-CREATE POLICY "products_select_admin" ON products
-    FOR SELECT
-    USING (auth.is_admin());
-
--- Admin bisa insert produk
-CREATE POLICY "products_insert_admin" ON products
-    FOR INSERT
-    WITH CHECK (auth.is_admin());
-
--- Admin bisa update produk
-CREATE POLICY "products_update_admin" ON products
-    FOR UPDATE
-    USING (auth.is_admin())
-    WITH CHECK (auth.is_admin());
-
--- Admin bisa delete produk
-CREATE POLICY "products_delete_admin" ON products
-    FOR DELETE
-    USING (auth.is_admin());
-
--- ============================================
--- ORDERS TABLE POLICIES
--- ============================================
--- User bisa lihat order sendiri
-CREATE POLICY "orders_select_own" ON orders
-    FOR SELECT
-    USING (user_id = auth.get_current_user_id());
-
--- Admin bisa lihat semua order
-CREATE POLICY "orders_select_admin" ON orders
-    FOR SELECT
-    USING (auth.is_admin());
-
--- Authenticated user bisa create order
-CREATE POLICY "orders_insert_auth" ON orders
-    FOR INSERT
-    WITH CHECK (auth.is_authenticated() AND user_id = auth.get_current_user_id());
-
--- User bisa cancel order sendiri (hanya jika pending)
-CREATE POLICY "orders_update_own" ON orders
-    FOR UPDATE
-    USING (user_id = auth.get_current_user_id() AND status = 'pending')
-    WITH CHECK (user_id = auth.get_current_user_id());
-
--- Admin bisa update semua order
-CREATE POLICY "orders_update_admin" ON orders
-    FOR UPDATE
-    USING (auth.is_admin());
-
--- ============================================
--- TRANSACTIONS TABLE POLICIES
--- ============================================
--- User bisa lihat transaksi sendiri
-CREATE POLICY "transactions_select_own" ON transactions
-    FOR SELECT
-    USING (user_id = auth.get_current_user_id());
-
--- Admin bisa lihat semua transaksi
-CREATE POLICY "transactions_select_admin" ON transactions
-    FOR SELECT
-    USING (auth.is_admin());
-
--- Tidak ada insert/update/delete policy untuk user
--- Transaksi hanya dibuat oleh system (trigger/function)
-
--- ============================================
--- SETTINGS TABLE POLICIES
--- ============================================
--- Semua orang bisa lihat public settings
-CREATE POLICY "settings_select_public" ON settings
-    FOR SELECT
-    USING (is_public = TRUE);
-
--- Admin bisa lihat semua settings
-CREATE POLICY "settings_select_admin" ON settings
-    FOR SELECT
-    USING (auth.is_admin());
-
--- Admin bisa manage settings
-CREATE POLICY "settings_all_admin" ON settings
-    FOR ALL
-    USING (auth.is_admin())
-    WITH CHECK (auth.is_admin());
-
--- ============================================
--- AUDIT LOGS TABLE POLICIES
--- ============================================
--- Hanya admin yang bisa lihat audit logs
-CREATE POLICY "audit_select_admin" ON audit_logs
-    FOR SELECT
-    USING (auth.is_admin());
-
--- Audit logs tidak bisa dimodifikasi oleh siapapun via RLS
--- Hanya trigger yang bisa insert
+-- AUDIT LOGS POLICIES
+CREATE POLICY "audit_select_admin" ON audit_logs FOR SELECT USING (auth.is_admin());
+EOF
 ```
 
-### 3.4 Service Role Bypass
+### 3.4 Jalankan RLS Setup via Terminal
 
-Untuk backend Express yang menggunakan service role, RLS akan di-bypass. Ini karena:
+```bash
+# Load env dan jalankan SQL files
+cd backend
+source .env 2>/dev/null || export $(cat .env | xargs)
 
-1. Backend perlu akses penuh untuk webhook handlers
-2. Backend sudah melakukan auth checking via middleware
-3. Performa lebih baik tanpa RLS check
+# Jalankan RLS functions
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/01-rls-functions.sql
 
-Di Drizzle connection, gunakan service role key:
-
-```javascript
-// backend/src/lib/db.js
-const connectionString = process.env.DATABASE_URL; // Service role connection
+# Jalankan RLS policies
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/02-rls-policies.sql
 ```
+
+> **Catatan:** Backend Express menggunakan service role connection yang bypass RLS, jadi RLS hanya berlaku untuk direct Supabase client access.
 
 ---
 
 ## 4. Database Functions & Triggers
 
-### 4.1 Auto-Update Timestamp
+### 4.1 Buat File SQL - Triggers
 
-```sql
+Buat file `backend/drizzle/sql/03-triggers.sql`:
+
+```bash
+cat > drizzle/sql/03-triggers.sql << 'EOF'
 -- ============================================
--- FUNCTION: Auto-update updated_at
+-- AUTO UPDATE TIMESTAMP
 -- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW(); RETURN NEW; END; $$ LANGUAGE plpgsql;
 
--- Apply trigger ke semua tabel yang punya updated_at
-CREATE TRIGGER update_user_updated_at
-    BEFORE UPDATE ON "user"
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_updated_at BEFORE UPDATE ON "user" FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_session_updated_at BEFORE UPDATE ON "session" FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_account_updated_at BEFORE UPDATE ON "account" FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_verification_updated_at BEFORE UPDATE ON "verification" FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_session_updated_at
-    BEFORE UPDATE ON "session"
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_account_updated_at
-    BEFORE UPDATE ON "account"
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_verification_updated_at
-    BEFORE UPDATE ON "verification"
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_profiles_updated_at
-    BEFORE UPDATE ON profiles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_products_updated_at
-    BEFORE UPDATE ON products
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_orders_updated_at
-    BEFORE UPDATE ON orders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_settings_updated_at
-    BEFORE UPDATE ON settings
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-```
-
-### 4.2 Auto-Create Profile on User Registration
-
-```sql
 -- ============================================
--- FUNCTION: Create profile when user registers
+-- AUTO CREATE PROFILE
 -- ============================================
 CREATE OR REPLACE FUNCTION create_profile_for_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO profiles (id, full_name, created_at)
-    VALUES (NEW.id, NEW.name, NOW())
-    ON CONFLICT (id) DO NOTHING;
-    
+    INSERT INTO profiles (id, full_name, created_at) VALUES (NEW.id, NEW.name, NOW()) ON CONFLICT (id) DO NOTHING;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER on_user_created
-    AFTER INSERT ON "user"
-    FOR EACH ROW EXECUTE FUNCTION create_profile_for_new_user();
-```
+CREATE TRIGGER on_user_created AFTER INSERT ON "user" FOR EACH ROW EXECUTE FUNCTION create_profile_for_new_user();
 
-### 4.3 Generate Order Number
-
-```sql
 -- ============================================
--- FUNCTION: Generate unique order number
--- Format: ORD-YYYYMMDD-XXXXX (random 5 chars)
+-- ORDER NUMBER GENERATOR
 -- ============================================
-CREATE OR REPLACE FUNCTION generate_order_number()
-RETURNS TEXT AS $$
-DECLARE
-    new_order_number TEXT;
-    counter INTEGER := 0;
+CREATE OR REPLACE FUNCTION generate_order_number() RETURNS TEXT AS $$
+DECLARE new_order_number TEXT; counter INTEGER := 0;
 BEGIN
     LOOP
-        -- Generate format: ORD-20241204-A1B2C
-        new_order_number := 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || 
-                           UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 5));
-        
-        -- Check if exists
-        IF NOT EXISTS (SELECT 1 FROM orders WHERE order_number = new_order_number) THEN
-            RETURN new_order_number;
-        END IF;
-        
+        new_order_number := 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || UPPER(SUBSTRING(MD5(RANDOM()::TEXT) FROM 1 FOR 5));
+        IF NOT EXISTS (SELECT 1 FROM orders WHERE order_number = new_order_number) THEN RETURN new_order_number; END IF;
         counter := counter + 1;
-        IF counter > 100 THEN
-            RAISE EXCEPTION 'Could not generate unique order number after 100 attempts';
-        END IF;
+        IF counter > 100 THEN RAISE EXCEPTION 'Could not generate unique order number'; END IF;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to auto-generate order number
-CREATE OR REPLACE FUNCTION set_order_number()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION set_order_number() RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.order_number IS NULL OR NEW.order_number = '' THEN
-        NEW.order_number := generate_order_number();
-    END IF;
+    IF NEW.order_number IS NULL OR NEW.order_number = '' THEN NEW.order_number := generate_order_number(); END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER before_order_insert
-    BEFORE INSERT ON orders
-    FOR EACH ROW EXECUTE FUNCTION set_order_number();
-```
+CREATE TRIGGER before_order_insert BEFORE INSERT ON orders FOR EACH ROW EXECUTE FUNCTION set_order_number();
 
-### 4.4 Process Balance Transaction
-
-```sql
 -- ============================================
--- FUNCTION: Process balance change (topup, purchase, refund)
--- Mencatat mutasi saldo dengan validasi
+-- BALANCE TRANSACTION
 -- ============================================
 CREATE OR REPLACE FUNCTION process_balance_transaction(
-    p_user_id TEXT,
-    p_type VARCHAR(20),
-    p_amount DECIMAL(15,2),
-    p_description TEXT DEFAULT NULL,
-    p_order_id UUID DEFAULT NULL,
-    p_reference_id VARCHAR(100) DEFAULT NULL
-)
-RETURNS transactions AS $$
-DECLARE
-    v_current_balance DECIMAL(15,2);
-    v_new_balance DECIMAL(15,2);
-    v_transaction transactions;
+    p_user_id TEXT, p_type VARCHAR(20), p_amount DECIMAL(15,2),
+    p_description TEXT DEFAULT NULL, p_order_id UUID DEFAULT NULL, p_reference_id VARCHAR(100) DEFAULT NULL
+) RETURNS transactions AS $$
+DECLARE v_current_balance DECIMAL(15,2); v_new_balance DECIMAL(15,2); v_transaction transactions;
 BEGIN
-    -- Lock row untuk prevent race condition
-    SELECT balance INTO v_current_balance
-    FROM profiles
-    WHERE id = p_user_id
-    FOR UPDATE;
-    
-    IF v_current_balance IS NULL THEN
-        RAISE EXCEPTION 'User profile not found: %', p_user_id;
-    END IF;
-    
-    -- Calculate new balance
+    SELECT balance INTO v_current_balance FROM profiles WHERE id = p_user_id FOR UPDATE;
+    IF v_current_balance IS NULL THEN RAISE EXCEPTION 'User profile not found: %', p_user_id; END IF;
     v_new_balance := v_current_balance + p_amount;
-    
-    -- Validate balance tidak negatif untuk purchase
-    IF p_type = 'purchase' AND v_new_balance < 0 THEN
-        RAISE EXCEPTION 'Insufficient balance. Current: %, Required: %', 
-                        v_current_balance, ABS(p_amount);
-    END IF;
-    
-    -- Update balance
-    UPDATE profiles
-    SET balance = v_new_balance,
-        updated_at = NOW()
-    WHERE id = p_user_id;
-    
-    -- Insert transaction log
-    INSERT INTO transactions (
-        user_id, order_id, type, amount, 
-        balance_before, balance_after, 
-        description, reference_id
-    ) VALUES (
-        p_user_id, p_order_id, p_type, p_amount,
-        v_current_balance, v_new_balance,
-        p_description, p_reference_id
-    )
+    IF p_type = 'purchase' AND v_new_balance < 0 THEN RAISE EXCEPTION 'Insufficient balance'; END IF;
+    UPDATE profiles SET balance = v_new_balance, updated_at = NOW() WHERE id = p_user_id;
+    INSERT INTO transactions (user_id, order_id, type, amount, balance_before, balance_after, description, reference_id)
+    VALUES (p_user_id, p_order_id, p_type, p_amount, v_current_balance, v_new_balance, p_description, p_reference_id)
     RETURNING * INTO v_transaction;
-    
     RETURN v_transaction;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-```
 
-### 4.5 Update Order Status
-
-```sql
 -- ============================================
--- FUNCTION: Update order status with validation
--- Mencegah transisi status yang tidak valid
+-- ORDER STATUS UPDATE
 -- ============================================
 CREATE OR REPLACE FUNCTION update_order_status(
-    p_order_id UUID,
-    p_new_status VARCHAR(20),
-    p_payment_status VARCHAR(20) DEFAULT NULL,
-    p_provider_trx_id VARCHAR(100) DEFAULT NULL,
-    p_provider_status VARCHAR(50) DEFAULT NULL,
-    p_provider_sn TEXT DEFAULT NULL,
-    p_provider_message TEXT DEFAULT NULL
-)
-RETURNS orders AS $$
-DECLARE
-    v_order orders;
-    v_old_status VARCHAR(20);
-    v_valid_transitions TEXT[];
+    p_order_id UUID, p_new_status VARCHAR(20), p_payment_status VARCHAR(20) DEFAULT NULL,
+    p_provider_trx_id VARCHAR(100) DEFAULT NULL, p_provider_status VARCHAR(50) DEFAULT NULL,
+    p_provider_sn TEXT DEFAULT NULL, p_provider_message TEXT DEFAULT NULL
+) RETURNS orders AS $$
+DECLARE v_order orders; v_old_status VARCHAR(20); v_valid_transitions TEXT[];
 BEGIN
-    -- Get current order with lock
-    SELECT * INTO v_order
-    FROM orders
-    WHERE id = p_order_id
-    FOR UPDATE;
-    
-    IF v_order IS NULL THEN
-        RAISE EXCEPTION 'Order not found: %', p_order_id;
-    END IF;
-    
+    SELECT * INTO v_order FROM orders WHERE id = p_order_id FOR UPDATE;
+    IF v_order IS NULL THEN RAISE EXCEPTION 'Order not found: %', p_order_id; END IF;
     v_old_status := v_order.status;
-    
-    -- Define valid transitions
     v_valid_transitions := CASE v_old_status
         WHEN 'pending' THEN ARRAY['processing', 'cancelled', 'failed']
         WHEN 'processing' THEN ARRAY['success', 'failed']
-        WHEN 'failed' THEN ARRAY['refunded', 'processing'] -- retry allowed
-        WHEN 'success' THEN ARRAY['refunded'] -- only refund possible
-        WHEN 'cancelled' THEN ARRAY[]::TEXT[]
-        WHEN 'refunded' THEN ARRAY[]::TEXT[]
-        ELSE ARRAY[]::TEXT[]
-    END;
-    
-    -- Validate transition
-    IF NOT (p_new_status = ANY(v_valid_transitions)) THEN
-        RAISE EXCEPTION 'Invalid status transition: % -> %', v_old_status, p_new_status;
-    END IF;
-    
-    -- Update order
-    UPDATE orders
-    SET status = p_new_status,
-        payment_status = COALESCE(p_payment_status, payment_status),
-        provider_trx_id = COALESCE(p_provider_trx_id, provider_trx_id),
-        provider_status = COALESCE(p_provider_status, provider_status),
-        provider_sn = COALESCE(p_provider_sn, provider_sn),
-        provider_message = COALESCE(p_provider_message, provider_message),
-        completed_at = CASE WHEN p_new_status IN ('success', 'failed', 'cancelled', 'refunded') 
-                           THEN NOW() ELSE completed_at END,
-        updated_at = NOW()
-    WHERE id = p_order_id
-    RETURNING * INTO v_order;
-    
+        WHEN 'failed' THEN ARRAY['refunded', 'processing']
+        WHEN 'success' THEN ARRAY['refunded']
+        ELSE ARRAY[]::TEXT[] END;
+    IF NOT (p_new_status = ANY(v_valid_transitions)) THEN RAISE EXCEPTION 'Invalid transition: % -> %', v_old_status, p_new_status; END IF;
+    UPDATE orders SET status = p_new_status, payment_status = COALESCE(p_payment_status, payment_status),
+        provider_trx_id = COALESCE(p_provider_trx_id, provider_trx_id), provider_status = COALESCE(p_provider_status, provider_status),
+        provider_sn = COALESCE(p_provider_sn, provider_sn), provider_message = COALESCE(p_provider_message, provider_message),
+        completed_at = CASE WHEN p_new_status IN ('success','failed','cancelled','refunded') THEN NOW() ELSE completed_at END, updated_at = NOW()
+    WHERE id = p_order_id RETURNING * INTO v_order;
     RETURN v_order;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- AUDIT LOG
+-- ============================================
+CREATE OR REPLACE FUNCTION log_audit_changes() RETURNS TRIGGER AS $$
+DECLARE v_old_values JSONB; v_new_values JSONB; v_action VARCHAR(50); v_record_id TEXT;
+BEGIN
+    IF TG_OP = 'INSERT' THEN v_action := 'INSERT'; v_old_values := NULL; v_new_values := to_jsonb(NEW); v_record_id := NEW.id::TEXT;
+    ELSIF TG_OP = 'UPDATE' THEN v_action := 'UPDATE'; v_old_values := to_jsonb(OLD); v_new_values := to_jsonb(NEW); v_record_id := NEW.id::TEXT;
+    ELSIF TG_OP = 'DELETE' THEN v_action := 'DELETE'; v_old_values := to_jsonb(OLD); v_new_values := NULL; v_record_id := OLD.id::TEXT; END IF;
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values) VALUES (auth.get_current_user_id(), v_action, TG_TABLE_NAME, v_record_id, v_old_values, v_new_values);
+    IF TG_OP = 'DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER audit_orders_changes AFTER INSERT OR UPDATE OR DELETE ON orders FOR EACH ROW EXECUTE FUNCTION log_audit_changes();
+CREATE TRIGGER audit_transactions_changes AFTER INSERT ON transactions FOR EACH ROW EXECUTE FUNCTION log_audit_changes();
+CREATE TRIGGER audit_profiles_changes AFTER UPDATE ON profiles FOR EACH ROW WHEN (OLD.balance IS DISTINCT FROM NEW.balance OR OLD.role IS DISTINCT FROM NEW.role) EXECUTE FUNCTION log_audit_changes();
+
+-- ============================================
+-- CLEANUP FUNCTIONS
+-- ============================================
+CREATE OR REPLACE FUNCTION cleanup_expired_sessions() RETURNS INTEGER AS $$
+DECLARE v_deleted_count INTEGER;
+BEGIN DELETE FROM "session" WHERE expires_at < NOW() RETURNING COUNT(*) INTO v_deleted_count; RETURN v_deleted_count; END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION cleanup_expired_verifications() RETURNS INTEGER AS $$
+DECLARE v_deleted_count INTEGER;
+BEGIN DELETE FROM verification WHERE expires_at < NOW() RETURNING COUNT(*) INTO v_deleted_count; RETURN v_deleted_count; END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+EOF
 ```
 
-### 4.6 Audit Log Trigger
+### 4.2 Jalankan Triggers via Terminal
 
-```sql
--- ============================================
--- FUNCTION: Log changes to audit_logs
--- Untuk tracking perubahan data sensitif
--- ============================================
-CREATE OR REPLACE FUNCTION log_audit_changes()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_old_values JSONB;
-    v_new_values JSONB;
-    v_action VARCHAR(50);
-    v_record_id TEXT;
-BEGIN
-    -- Determine action
-    IF TG_OP = 'INSERT' THEN
-        v_action := 'INSERT';
-        v_old_values := NULL;
-        v_new_values := to_jsonb(NEW);
-        v_record_id := NEW.id::TEXT;
-    ELSIF TG_OP = 'UPDATE' THEN
-        v_action := 'UPDATE';
-        v_old_values := to_jsonb(OLD);
-        v_new_values := to_jsonb(NEW);
-        v_record_id := NEW.id::TEXT;
-    ELSIF TG_OP = 'DELETE' THEN
-        v_action := 'DELETE';
-        v_old_values := to_jsonb(OLD);
-        v_new_values := NULL;
-        v_record_id := OLD.id::TEXT;
-    END IF;
-    
-    -- Insert audit log
-    INSERT INTO audit_logs (
-        user_id, action, table_name, record_id,
-        old_values, new_values
-    ) VALUES (
-        auth.get_current_user_id(),
-        v_action,
-        TG_TABLE_NAME,
-        v_record_id,
-        v_old_values,
-        v_new_values
-    );
-    
-    IF TG_OP = 'DELETE' THEN
-        RETURN OLD;
-    ELSE
-        RETURN NEW;
-    END IF;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Apply audit trigger ke tabel sensitif
-CREATE TRIGGER audit_orders_changes
-    AFTER INSERT OR UPDATE OR DELETE ON orders
-    FOR EACH ROW EXECUTE FUNCTION log_audit_changes();
-
-CREATE TRIGGER audit_transactions_changes
-    AFTER INSERT ON transactions
-    FOR EACH ROW EXECUTE FUNCTION log_audit_changes();
-
-CREATE TRIGGER audit_profiles_changes
-    AFTER UPDATE ON profiles
-    FOR EACH ROW 
-    WHEN (OLD.balance IS DISTINCT FROM NEW.balance OR OLD.role IS DISTINCT FROM NEW.role)
-    EXECUTE FUNCTION log_audit_changes();
-```
-
-### 4.7 Cleanup Expired Sessions
-
-```sql
--- ============================================
--- FUNCTION: Cleanup expired sessions
--- Jalankan via cron job atau scheduled function
--- ============================================
-CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
-RETURNS INTEGER AS $$
-DECLARE
-    v_deleted_count INTEGER;
-BEGIN
-    DELETE FROM "session"
-    WHERE expires_at < NOW()
-    RETURNING COUNT(*) INTO v_deleted_count;
-    
-    RETURN v_deleted_count;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Cleanup expired verifications
-CREATE OR REPLACE FUNCTION cleanup_expired_verifications()
-RETURNS INTEGER AS $$
-DECLARE
-    v_deleted_count INTEGER;
-BEGIN
-    DELETE FROM verification
-    WHERE expires_at < NOW()
-    RETURNING COUNT(*) INTO v_deleted_count;
-    
-    RETURN v_deleted_count;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+```bash
+cd backend
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/03-triggers.sql
 ```
 
 ---
 
 ## 5. Realtime Setup
 
-### 5.1 Konsep Realtime
+### 5.1 Buat File SQL - Realtime
 
-Supabase Realtime memungkinkan frontend menerima update data secara instan via WebSocket. Ini penting untuk:
-
-- Update status order real-time
-- Notifikasi saldo berubah
-- Dashboard admin live update
-
-### 5.2 Enable Realtime via SQL
-
-```sql
--- ============================================
--- ENABLE REALTIME FOR SPECIFIC TABLES
--- ============================================
-
--- Enable realtime untuk orders (paling penting)
+```bash
+cat > drizzle/sql/04-realtime.sql << 'EOF'
+-- Enable realtime untuk tabel yang perlu live update
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
-
--- Enable realtime untuk profiles (update saldo)
 ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
-
--- Enable realtime untuk transactions
 ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
-
--- Verify realtime enabled
-SELECT schemaname, tablename 
-FROM pg_publication_tables 
-WHERE pubname = 'supabase_realtime'
-ORDER BY tablename;
+EOF
 ```
 
-### 5.3 Frontend Integration
+### 5.2 Jalankan Realtime Setup
+
+```bash
+cd backend
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/04-realtime.sql
+```
+
+### 5.3 Frontend Integration (Opsional)
+
+Contoh penggunaan realtime di frontend:
 
 ```javascript
 // frontend/src/lib/realtime.js
@@ -1097,433 +751,236 @@ const supabase = createClient(
   import.meta.env.PUBLIC_SUPABASE_ANON_KEY
 );
 
-// Subscribe ke perubahan order untuk user tertentu
 export function subscribeToOrderUpdates(userId, onUpdate) {
-  const channel = supabase
-    .channel('order-updates')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'orders',
-        filter: `user_id=eq.${userId}`,
-      },
-      (payload) => {
-        console.log('Order updated:', payload.new);
-        onUpdate(payload.new);
-      }
-    )
+  return supabase.channel('order-updates')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, (payload) => onUpdate(payload.new))
     .subscribe();
-
-  // Return unsubscribe function
-  return () => {
-    channel.unsubscribe();
-  };
 }
-
-// Subscribe ke perubahan balance
-export function subscribeToBalanceUpdates(userId, onUpdate) {
-  const channel = supabase
-    .channel('balance-updates')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-        filter: `id=eq.${userId}`,
-      },
-      (payload) => {
-        console.log('Balance updated:', payload.new.balance);
-        onUpdate(payload.new.balance);
-      }
-    )
-    .subscribe();
-
-  return () => {
-    channel.unsubscribe();
-  };
-}
-
-// Admin: Subscribe ke semua order baru
-export function subscribeToNewOrders(onNewOrder) {
-  const channel = supabase
-    .channel('admin-orders')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'orders',
-      },
-      (payload) => {
-        console.log('New order:', payload.new);
-        onNewOrder(payload.new);
-      }
-    )
-    .subscribe();
-
-  return () => {
-    channel.unsubscribe();
-  };
-}
-```
-
-### 5.4 Usage di Astro Component
-
-```astro
----
-// pages/dashboard/orders.astro
-import Layout from '../../layouts/DashboardLayout.astro';
----
-
-<Layout title="My Orders">
-  <div id="orders-container">
-    <!-- Orders will be rendered here -->
-  </div>
-</Layout>
-
-<script>
-  import { subscribeToOrderUpdates } from '../../lib/realtime';
-  import { getSession } from '../../lib/auth-client';
-
-  async function initRealtime() {
-    const session = await getSession();
-    if (!session?.user?.id) return;
-
-    const unsubscribe = subscribeToOrderUpdates(session.user.id, (order) => {
-      // Update UI when order status changes
-      const orderElement = document.getElementById(`order-${order.id}`);
-      if (orderElement) {
-        orderElement.querySelector('.status').textContent = order.status;
-        
-        // Show notification
-        if (order.status === 'success') {
-          showNotification('Order berhasil! Check akun game kamu.');
-        } else if (order.status === 'failed') {
-          showNotification('Order gagal. Dana akan dikembalikan.');
-        }
-      }
-    });
-
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', unsubscribe);
-  }
-
-  initRealtime();
-</script>
 ```
 
 ---
 
 ## 6. Indexes & Optimization
 
-### 6.1 Query Analysis
+### 6.1 Buat File SQL - Indexes
 
-Untuk memastikan query optimal, gunakan `EXPLAIN ANALYZE`:
+> **Catatan:** Index dasar sudah ada di schema Drizzle. Ini untuk partial indexes tambahan.
 
-```sql
--- Contoh: Analyze query orders by user
-EXPLAIN ANALYZE
-SELECT * FROM orders
-WHERE user_id = 'user-id-here'
-ORDER BY created_at DESC
-LIMIT 10;
+```bash
+cat > drizzle/sql/05-indexes.sql << 'EOF'
+-- Partial indexes untuk query yang sering dipakai
+CREATE INDEX IF NOT EXISTS idx_orders_pending ON orders(created_at DESC) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_orders_needs_action ON orders(created_at DESC) WHERE status IN ('pending', 'processing') AND payment_status = 'paid';
+CREATE INDEX IF NOT EXISTS idx_products_game_active ON products(provider, name) WHERE category = 'game' AND is_active = TRUE;
 
--- Contoh: Analyze products by category
-EXPLAIN ANALYZE
-SELECT * FROM products
-WHERE category = 'game' AND is_active = TRUE
-ORDER BY name;
+-- Update statistics
+ANALYZE "user"; ANALYZE "session"; ANALYZE profiles; ANALYZE products; ANALYZE orders; ANALYZE transactions;
+EOF
 ```
 
-### 6.2 Partial Indexes
+### 6.2 Jalankan Indexes
 
-Partial indexes untuk kondisi yang sering diquery:
-
-```sql
--- Index untuk order yang pending (perlu diproses)
-CREATE INDEX IF NOT EXISTS idx_orders_pending 
-ON orders(created_at DESC) 
-WHERE status = 'pending';
-
--- Index untuk order yang butuh action
-CREATE INDEX IF NOT EXISTS idx_orders_needs_action 
-ON orders(created_at DESC) 
-WHERE status IN ('pending', 'processing') AND payment_status = 'paid';
-
--- Index untuk produk game aktif
-CREATE INDEX IF NOT EXISTS idx_products_game_active 
-ON products(provider, name) 
-WHERE category = 'game' AND is_active = TRUE;
-```
-
-### 6.3 Statistics Update
-
-```sql
--- Update statistics untuk planner
-ANALYZE "user";
-ANALYZE "session";
-ANALYZE profiles;
-ANALYZE products;
-ANALYZE orders;
-ANALYZE transactions;
+```bash
+cd backend
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/05-indexes.sql
 ```
 
 ---
 
 ## 7. Seed Data
 
-### 7.1 Default Settings
+### 7.1 Buat File SQL - Seed
 
-```sql
+```bash
+cat > drizzle/sql/06-seed.sql << 'EOF'
 -- ============================================
--- SEED: Default Settings
+-- DEFAULT SETTINGS
 -- ============================================
 INSERT INTO settings (key, value, value_type, description, is_public) VALUES
-    ('admin_fee', '1000', 'number', 'Biaya admin per transaksi (Rupiah)', true),
-    ('min_topup', '10000', 'number', 'Minimum top-up saldo (Rupiah)', true),
-    ('max_topup', '10000000', 'number', 'Maximum top-up saldo (Rupiah)', true),
-    ('maintenance_mode', 'false', 'boolean', 'Mode maintenance (true/false)', true),
-    ('maintenance_message', 'Sistem sedang dalam perbaikan. Mohon tunggu.', 'string', 'Pesan maintenance', true),
+    ('admin_fee', '1000', 'number', 'Biaya admin per transaksi', true),
+    ('min_topup', '10000', 'number', 'Minimum top-up saldo', true),
+    ('max_topup', '10000000', 'number', 'Maximum top-up saldo', true),
+    ('maintenance_mode', 'false', 'boolean', 'Mode maintenance', true),
+    ('maintenance_message', 'Sistem sedang dalam perbaikan', 'string', 'Pesan maintenance', true),
     ('contact_whatsapp', '6281234567890', 'string', 'Nomor WhatsApp CS', true),
     ('contact_email', 'support@boba.store', 'string', 'Email support', true)
-ON CONFLICT (key) DO UPDATE SET
-    value = EXCLUDED.value,
-    updated_at = NOW();
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+
+-- ============================================
+-- SAMPLE PRODUCTS - MOBILE LEGENDS
+-- ============================================
+INSERT INTO products (category, provider, name, slug, sku, price, discount, description, is_active) VALUES
+    ('game', 'mobile-legends', '86 Diamonds', 'ml-86-dm', 'ML86', 20000, 0, '86 Diamonds ML', true),
+    ('game', 'mobile-legends', '172 Diamonds', 'ml-172-dm', 'ML172', 40000, 2000, '172 Diamonds ML', true),
+    ('game', 'mobile-legends', '257 Diamonds', 'ml-257-dm', 'ML257', 58000, 3000, '257 Diamonds ML', true),
+    ('game', 'mobile-legends', '344 Diamonds', 'ml-344-dm', 'ML344', 76000, 4000, '344 Diamonds ML', true),
+    ('game', 'mobile-legends', '514 Diamonds', 'ml-514-dm', 'ML514', 112000, 6000, '514 Diamonds ML', true),
+    ('game', 'mobile-legends', 'Starlight', 'ml-starlight', 'MLSTAR', 150000, 5000, 'Starlight Member', true)
+ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount = EXCLUDED.discount, updated_at = NOW();
+
+-- ============================================
+-- SAMPLE PRODUCTS - FREE FIRE
+-- ============================================
+INSERT INTO products (category, provider, name, slug, sku, price, discount, description, is_active) VALUES
+    ('game', 'free-fire', '70 Diamonds', 'ff-70-dm', 'FF70', 15000, 0, '70 Diamonds FF', true),
+    ('game', 'free-fire', '140 Diamonds', 'ff-140-dm', 'FF140', 29000, 1500, '140 Diamonds FF', true),
+    ('game', 'free-fire', '355 Diamonds', 'ff-355-dm', 'FF355', 72000, 4000, '355 Diamonds FF', true),
+    ('game', 'free-fire', '720 Diamonds', 'ff-720-dm', 'FF720', 145000, 8000, '720 Diamonds FF', true)
+ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount = EXCLUDED.discount, updated_at = NOW();
+
+-- ============================================
+-- SAMPLE PRODUCTS - PULSA
+-- ============================================
+INSERT INTO products (category, provider, name, slug, sku, price, discount, description, is_active) VALUES
+    ('pulsa', 'telkomsel', 'Pulsa 10K', 'tsel-10k', 'TSEL10', 11500, 500, 'Pulsa Telkomsel 10K', true),
+    ('pulsa', 'telkomsel', 'Pulsa 25K', 'tsel-25k', 'TSEL25', 26500, 1000, 'Pulsa Telkomsel 25K', true),
+    ('pulsa', 'telkomsel', 'Pulsa 50K', 'tsel-50k', 'TSEL50', 51500, 2000, 'Pulsa Telkomsel 50K', true),
+    ('pulsa', 'indosat', 'Pulsa 10K', 'isat-10k', 'ISAT10', 11200, 500, 'Pulsa Indosat 10K', true),
+    ('pulsa', 'indosat', 'Pulsa 25K', 'isat-25k', 'ISAT25', 26000, 1000, 'Pulsa Indosat 25K', true),
+    ('pulsa', 'xl', 'Pulsa 10K', 'xl-10k', 'XL10', 11300, 500, 'Pulsa XL 10K', true)
+ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount = EXCLUDED.discount, updated_at = NOW();
+
+-- ============================================
+-- SAMPLE PRODUCTS - E-WALLET
+-- ============================================
+INSERT INTO products (category, provider, name, slug, sku, price, discount, description, is_active) VALUES
+    ('ewallet', 'dana', 'DANA 25K', 'dana-25k', 'DANA25', 26000, 500, 'Saldo DANA 25K', true),
+    ('ewallet', 'dana', 'DANA 50K', 'dana-50k', 'DANA50', 51000, 1000, 'Saldo DANA 50K', true),
+    ('ewallet', 'gopay', 'GoPay 25K', 'gopay-25k', 'GOPAY25', 26000, 500, 'Saldo GoPay 25K', true),
+    ('ewallet', 'gopay', 'GoPay 50K', 'gopay-50k', 'GOPAY50', 51000, 1000, 'Saldo GoPay 50K', true),
+    ('ewallet', 'ovo', 'OVO 25K', 'ovo-25k', 'OVO25', 26000, 500, 'Saldo OVO 25K', true),
+    ('ewallet', 'shopeepay', 'ShopeePay 25K', 'spay-25k', 'SPAY25', 26000, 500, 'Saldo ShopeePay 25K', true)
+ON CONFLICT (slug) DO UPDATE SET price = EXCLUDED.price, discount = EXCLUDED.discount, updated_at = NOW();
+EOF
 ```
 
-### 7.2 Sample Products
+### 7.2 Jalankan Seed Data
 
-```sql
--- ============================================
--- SEED: Sample Products
--- ============================================
-
--- Mobile Legends Products
-INSERT INTO products (category, provider, name, slug, sku, price, discount, description, image_url, is_active) VALUES
-    ('game', 'mobile-legends', '86 Diamonds', 'mobile-legends-86-diamonds', 'ML86', 20000, 0, '86 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', '172 Diamonds', 'mobile-legends-172-diamonds', 'ML172', 40000, 2000, '172 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', '257 Diamonds', 'mobile-legends-257-diamonds', 'ML257', 58000, 3000, '257 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', '344 Diamonds', 'mobile-legends-344-diamonds', 'ML344', 76000, 4000, '344 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', '429 Diamonds', 'mobile-legends-429-diamonds', 'ML429', 94000, 5000, '429 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', '514 Diamonds', 'mobile-legends-514-diamonds', 'ML514', 112000, 6000, '514 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', '706 Diamonds', 'mobile-legends-706-diamonds', 'ML706', 152000, 8000, '706 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', '878 Diamonds', 'mobile-legends-878-diamonds', 'ML878', 188000, 10000, '878 Diamonds Mobile Legends', '/images/products/ml-diamonds.png', true),
-    ('game', 'mobile-legends', 'Starlight Member', 'mobile-legends-starlight', 'MLSTAR', 150000, 5000, 'Starlight Member 1 Bulan', '/images/products/ml-starlight.png', true),
-    ('game', 'mobile-legends', 'Twilight Pass', 'mobile-legends-twilight', 'MLTWI', 75000, 0, 'Twilight Pass', '/images/products/ml-pass.png', true)
-ON CONFLICT (slug) DO UPDATE SET
-    price = EXCLUDED.price,
-    discount = EXCLUDED.discount,
-    updated_at = NOW();
-
--- Free Fire Products
-INSERT INTO products (category, provider, name, slug, sku, price, discount, description, image_url, is_active) VALUES
-    ('game', 'free-fire', '70 Diamonds', 'free-fire-70-diamonds', 'FF70', 15000, 0, '70 Diamonds Free Fire', '/images/products/ff-diamonds.png', true),
-    ('game', 'free-fire', '140 Diamonds', 'free-fire-140-diamonds', 'FF140', 29000, 1500, '140 Diamonds Free Fire', '/images/products/ff-diamonds.png', true),
-    ('game', 'free-fire', '355 Diamonds', 'free-fire-355-diamonds', 'FF355', 72000, 4000, '355 Diamonds Free Fire', '/images/products/ff-diamonds.png', true),
-    ('game', 'free-fire', '720 Diamonds', 'free-fire-720-diamonds', 'FF720', 145000, 8000, '720 Diamonds Free Fire', '/images/products/ff-diamonds.png', true),
-    ('game', 'free-fire', 'Membership Mingguan', 'free-fire-weekly-member', 'FFWEEK', 28000, 0, 'Weekly Membership', '/images/products/ff-member.png', true),
-    ('game', 'free-fire', 'Membership Bulanan', 'free-fire-monthly-member', 'FFMONTH', 140000, 10000, 'Monthly Membership', '/images/products/ff-member.png', true)
-ON CONFLICT (slug) DO UPDATE SET
-    price = EXCLUDED.price,
-    discount = EXCLUDED.discount,
-    updated_at = NOW();
-
--- Pulsa Products
-INSERT INTO products (category, provider, name, slug, sku, price, discount, description, image_url, is_active) VALUES
-    ('pulsa', 'telkomsel', 'Pulsa 5.000', 'telkomsel-5000', 'TSEL5', 6500, 0, 'Pulsa Telkomsel 5.000', '/images/products/telkomsel.png', true),
-    ('pulsa', 'telkomsel', 'Pulsa 10.000', 'telkomsel-10000', 'TSEL10', 11500, 500, 'Pulsa Telkomsel 10.000', '/images/products/telkomsel.png', true),
-    ('pulsa', 'telkomsel', 'Pulsa 25.000', 'telkomsel-25000', 'TSEL25', 26500, 1000, 'Pulsa Telkomsel 25.000', '/images/products/telkomsel.png', true),
-    ('pulsa', 'telkomsel', 'Pulsa 50.000', 'telkomsel-50000', 'TSEL50', 51500, 2000, 'Pulsa Telkomsel 50.000', '/images/products/telkomsel.png', true),
-    ('pulsa', 'telkomsel', 'Pulsa 100.000', 'telkomsel-100000', 'TSEL100', 101500, 4000, 'Pulsa Telkomsel 100.000', '/images/products/telkomsel.png', true),
-    ('pulsa', 'indosat', 'Pulsa 5.000', 'indosat-5000', 'ISAT5', 6200, 0, 'Pulsa Indosat 5.000', '/images/products/indosat.png', true),
-    ('pulsa', 'indosat', 'Pulsa 10.000', 'indosat-10000', 'ISAT10', 11200, 500, 'Pulsa Indosat 10.000', '/images/products/indosat.png', true),
-    ('pulsa', 'indosat', 'Pulsa 25.000', 'indosat-25000', 'ISAT25', 26000, 1000, 'Pulsa Indosat 25.000', '/images/products/indosat.png', true),
-    ('pulsa', 'indosat', 'Pulsa 50.000', 'indosat-50000', 'ISAT50', 51000, 2000, 'Pulsa Indosat 50.000', '/images/products/indosat.png', true),
-    ('pulsa', 'xl', 'Pulsa 5.000', 'xl-5000', 'XL5', 6300, 0, 'Pulsa XL 5.000', '/images/products/xl.png', true),
-    ('pulsa', 'xl', 'Pulsa 10.000', 'xl-10000', 'XL10', 11300, 500, 'Pulsa XL 10.000', '/images/products/xl.png', true),
-    ('pulsa', 'xl', 'Pulsa 25.000', 'xl-25000', 'XL25', 26300, 1000, 'Pulsa XL 25.000', '/images/products/xl.png', true)
-ON CONFLICT (slug) DO UPDATE SET
-    price = EXCLUDED.price,
-    discount = EXCLUDED.discount,
-    updated_at = NOW();
-
--- E-Wallet Products
-INSERT INTO products (category, provider, name, slug, sku, price, discount, description, image_url, is_active) VALUES
-    ('ewallet', 'dana', 'DANA 10.000', 'dana-10000', 'DANA10', 11000, 0, 'Saldo DANA 10.000', '/images/products/dana.png', true),
-    ('ewallet', 'dana', 'DANA 25.000', 'dana-25000', 'DANA25', 26000, 500, 'Saldo DANA 25.000', '/images/products/dana.png', true),
-    ('ewallet', 'dana', 'DANA 50.000', 'dana-50000', 'DANA50', 51000, 1000, 'Saldo DANA 50.000', '/images/products/dana.png', true),
-    ('ewallet', 'dana', 'DANA 100.000', 'dana-100000', 'DANA100', 101000, 2000, 'Saldo DANA 100.000', '/images/products/dana.png', true),
-    ('ewallet', 'gopay', 'GoPay 10.000', 'gopay-10000', 'GOPAY10', 11000, 0, 'Saldo GoPay 10.000', '/images/products/gopay.png', true),
-    ('ewallet', 'gopay', 'GoPay 25.000', 'gopay-25000', 'GOPAY25', 26000, 500, 'Saldo GoPay 25.000', '/images/products/gopay.png', true),
-    ('ewallet', 'gopay', 'GoPay 50.000', 'gopay-50000', 'GOPAY50', 51000, 1000, 'Saldo GoPay 50.000', '/images/products/gopay.png', true),
-    ('ewallet', 'gopay', 'GoPay 100.000', 'gopay-100000', 'GOPAY100', 101000, 2000, 'Saldo GoPay 100.000', '/images/products/gopay.png', true),
-    ('ewallet', 'ovo', 'OVO 10.000', 'ovo-10000', 'OVO10', 11000, 0, 'Saldo OVO 10.000', '/images/products/ovo.png', true),
-    ('ewallet', 'ovo', 'OVO 25.000', 'ovo-25000', 'OVO25', 26000, 500, 'Saldo OVO 25.000', '/images/products/ovo.png', true),
-    ('ewallet', 'ovo', 'OVO 50.000', 'ovo-50000', 'OVO50', 51000, 1000, 'Saldo OVO 50.000', '/images/products/ovo.png', true),
-    ('ewallet', 'shopeepay', 'ShopeePay 10.000', 'shopeepay-10000', 'SPAY10', 11000, 0, 'Saldo ShopeePay 10.000', '/images/products/shopeepay.png', true),
-    ('ewallet', 'shopeepay', 'ShopeePay 25.000', 'shopeepay-25000', 'SPAY25', 26000, 500, 'Saldo ShopeePay 25.000', '/images/products/shopeepay.png', true),
-    ('ewallet', 'shopeepay', 'ShopeePay 50.000', 'shopeepay-50000', 'SPAY50', 51000, 1000, 'Saldo ShopeePay 50.000', '/images/products/shopeepay.png', true)
-ON CONFLICT (slug) DO UPDATE SET
-    price = EXCLUDED.price,
-    discount = EXCLUDED.discount,
-    updated_at = NOW();
+```bash
+cd backend
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/06-seed.sql
 ```
 
-### 7.3 Create Admin User
+### 7.3 Set Admin User (setelah register via app)
 
-```sql
--- ============================================
--- SEED: Create Admin User (jalankan setelah register via app)
--- ============================================
--- Setelah user admin register via aplikasi, jalankan query ini
--- untuk set role menjadi admin
-
--- Ganti 'admin@boba.store' dengan email admin yang sudah terdaftar
-UPDATE profiles
-SET role = 'admin'
-WHERE id = (
-    SELECT id FROM "user" WHERE email = 'admin@boba.store'
-);
-
--- Verify
-SELECT u.email, p.role 
-FROM "user" u 
-JOIN profiles p ON u.id = p.id 
-WHERE u.email = 'admin@boba.store';
+```bash
+# Ganti email dengan admin yang sudah register
+psql "$DATABASE_URL_MIGRATION" -c "UPDATE profiles SET role = 'admin' WHERE id = (SELECT id FROM \"user\" WHERE email = 'admin@boba.store');"
 ```
 
 ---
 
 ## 8. Testing & Verification
 
-### 8.1 Test Schema
+### 8.1 One-Command Full Setup
 
-```sql
--- ============================================
--- TEST: Verify all tables exist
--- ============================================
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-ORDER BY table_name;
+Buat script untuk jalankan semua SQL sekaligus:
 
--- Expected output:
--- account, audit_logs, orders, products, profiles, 
--- session, settings, transactions, user, verification
+```bash
+cat > drizzle/sql/run-all.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "🚀 Running all SQL migrations..."
+
+# Load env
+source .env 2>/dev/null || export $(cat .env | xargs)
+
+# Run all SQL files in order
+for file in drizzle/sql/0*.sql; do
+    echo "📄 Running $file..."
+    psql "$DATABASE_URL_MIGRATION" -f "$file"
+done
+
+echo "✅ All migrations completed!"
+EOF
+
+chmod +x drizzle/sql/run-all.sh
 ```
 
-### 8.2 Test Functions
+### 8.2 Jalankan Full Setup
 
-```sql
--- ============================================
--- TEST: Generate Order Number
--- ============================================
-SELECT generate_order_number();
--- Expected: ORD-20241204-XXXXX (format)
+```bash
+cd backend
 
--- Test uniqueness (run multiple times)
-SELECT generate_order_number() FROM generate_series(1, 10);
+# Jalankan semua SQL sekaligus
+./drizzle/sql/run-all.sh
 ```
 
-### 8.3 Test Balance Transaction
+### 8.3 Verifikasi Setup
 
-```sql
--- ============================================
--- TEST: Balance Transaction
--- ============================================
+```bash
+cd backend
 
--- 1. First, create test user via app or manually
--- 2. Get user ID
-SELECT id, email FROM "user" LIMIT 1;
+# Cek semua tabel
+psql "$DATABASE_URL_MIGRATION" -c "\dt"
 
--- 3. Test topup
-SELECT * FROM process_balance_transaction(
-    'USER_ID_HERE',  -- Replace with actual user ID
-    'topup',
-    100000,
-    'Test topup Rp 100.000'
-);
+# Cek functions
+psql "$DATABASE_URL_MIGRATION" -c "\df auth.*"
+psql "$DATABASE_URL_MIGRATION" -c "\df public.*"
 
--- 4. Check balance updated
-SELECT id, balance FROM profiles WHERE id = 'USER_ID_HERE';
+# Cek RLS policies
+psql "$DATABASE_URL_MIGRATION" -c "SELECT tablename, policyname FROM pg_policies ORDER BY tablename;"
 
--- 5. Test purchase
-SELECT * FROM process_balance_transaction(
-    'USER_ID_HERE',
-    'purchase',
-    -50000,
-    'Test purchase Rp 50.000'
-);
+# Cek products terisi
+psql "$DATABASE_URL_MIGRATION" -c "SELECT COUNT(*) as total_products FROM products;"
 
--- 6. Check transaction log
-SELECT * FROM transactions 
-WHERE user_id = 'USER_ID_HERE' 
-ORDER BY created_at DESC;
+# Cek settings terisi
+psql "$DATABASE_URL_MIGRATION" -c "SELECT key, value FROM settings ORDER BY key;"
+
+# Cek realtime enabled
+psql "$DATABASE_URL_MIGRATION" -c "SELECT tablename FROM pg_publication_tables WHERE pubname = 'supabase_realtime';"
 ```
 
-### 8.4 Test RLS Policies
+### 8.4 Test Functions
 
-```sql
--- ============================================
--- TEST: RLS Policies
--- ============================================
+```bash
+cd backend
 
--- Disable temporarily for testing
-ALTER TABLE products DISABLE ROW LEVEL SECURITY;
+# Test generate order number
+psql "$DATABASE_URL_MIGRATION" -c "SELECT generate_order_number();"
 
--- Test query without RLS
-SELECT COUNT(*) FROM products;
-
--- Re-enable
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-
--- Test as anonymous (should only see active products)
-SELECT COUNT(*) FROM products WHERE is_active = TRUE;
+# Test cleanup (harusnya return 0 jika tidak ada expired)
+psql "$DATABASE_URL_MIGRATION" -c "SELECT cleanup_expired_sessions();"
 ```
 
-### 8.5 Test Indexes
+### 8.5 Drizzle Studio (GUI)
 
-```sql
--- ============================================
--- TEST: Index Usage
--- ============================================
+Untuk explore database dengan visual:
 
--- Check if indexes are being used
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT * FROM products 
-WHERE category = 'game' AND is_active = TRUE 
-ORDER BY name;
-
--- Check index stats
-SELECT 
-    schemaname,
-    tablename,
-    indexname,
-    idx_tup_read,
-    idx_tup_fetch
-FROM pg_stat_user_indexes
-WHERE schemaname = 'public'
-ORDER BY idx_tup_read DESC;
-```
-
-### 8.6 Test Realtime
-
-```sql
--- ============================================
--- TEST: Realtime is enabled
--- ============================================
-SELECT schemaname, tablename 
-FROM pg_publication_tables 
-WHERE pubname = 'supabase_realtime'
-ORDER BY tablename;
-
--- Expected: orders, profiles, transactions
+```bash
+cd backend
+npx drizzle-kit studio
 ```
 
 ---
+
+## Ringkasan Quick Commands
+
+```bash
+# === FULL SETUP (dari awal) ===
+cd backend
+npm install drizzle-orm postgres pg dotenv
+npm install -D drizzle-kit
+
+# Push schema Drizzle
+npx drizzle-kit push
+
+# Jalankan semua SQL
+./drizzle/sql/run-all.sh
+
+# === INDIVIDUAL COMMANDS ===
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/01-rls-functions.sql
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/02-rls-policies.sql
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/03-triggers.sql
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/04-realtime.sql
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/05-indexes.sql
+psql "$DATABASE_URL_MIGRATION" -f drizzle/sql/06-seed.sql
+
+# === VERIFY ===
+psql "$DATABASE_URL_MIGRATION" -c "\dt"
+npx drizzle-kit studio
+```
 
 ## 9. Backup & Maintenance
 

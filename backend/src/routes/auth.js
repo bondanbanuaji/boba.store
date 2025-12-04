@@ -5,6 +5,7 @@ const { auth } = require('../lib/auth');
 const router = express.Router();
 
 // Mount Better Auth handler for all auth routes
-router.all('/*', toNodeHandler(auth));
+// Express 5 uses '*path' instead of '/*'
+router.all('*path', toNodeHandler(auth));
 
 module.exports = router;

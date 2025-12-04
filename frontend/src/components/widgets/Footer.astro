@@ -1,0 +1,83 @@
+---
+import { Heart } from "lucide-astro";
+---
+
+<footer class="border-t border-white/5 bg-black/20 backdrop-blur-sm mt-auto">
+    <div class="container mx-auto px-4 py-12">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div class="col-span-1 md:col-span-2">
+                <a
+                    href="/"
+                    class="text-2xl font-bold tracking-tighter mb-4 block"
+                >
+                    <span class="text-gradient">Boba</span>.Store
+                </a>
+                <p class="text-white/50 max-w-sm leading-relaxed">
+                    Platform top-up game termurah dan terpercaya di Indonesia.
+                    Proses otomatis, layanan 24 jam, dan tersedia berbagai
+                    metode pembayaran.
+                </p>
+            </div>
+
+            <div>
+                <h3 class="font-bold text-white mb-4">Menu</h3>
+                <ul class="space-y-2">
+                    <li>
+                        <a
+                            href="/"
+                            class="text-white/50 hover:text-white transition-colors"
+                            >Beranda</a>
+                    </li>
+                    <li>
+                        <a
+                            href="/products"
+                            class="text-white/50 hover:text-white transition-colors"
+                            >Daftar Game</a>
+                    </li>
+                    <li>
+                        <a
+                            href="/track"
+                            class="text-white/50 hover:text-white transition-colors"
+                            >Lacak Pesanan</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div>
+                <h3 class="font-bold text-white mb-4">Dukungan</h3>
+                <ul class="space-y-2">
+                    <li>
+                        <a
+                            href="/terms"
+                            class="text-white/50 hover:text-white transition-colors"
+                            >Syarat & Ketentuan</a>
+                    </li>
+                    <li>
+                        <a
+                            href="/privacy"
+                            class="text-white/50 hover:text-white transition-colors"
+                            >Kebijakan Privasi</a>
+                    </li>
+                    <li>
+                        <a
+                            href="/contact"
+                            class="text-white/50 hover:text-white transition-colors"
+                            >Hubungi Kami</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div
+            class="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4"
+        >
+            <p class="text-white/40 text-sm">
+                &copy; {new Date().getFullYear()} Boba.Store. All rights reserved.
+            </p>
+            <p class="text-white/40 text-sm flex items-center gap-1">
+                Made with <Heart class="w-4 h-4 text-red-500 fill-red-500" /> in
+                Indonesia
+            </p>
+        </div>
+    </div>
+</footer>

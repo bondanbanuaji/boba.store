@@ -1,0 +1,127 @@
+---
+import Dashboard from "../../layouts/Dashboard.astro";
+import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Activity } from "lucide-astro";
+import { formatCurrency } from "../../lib/utils";
+
+// TODO: Fetch from API - Admin stats
+const stats = [
+  { label: 'Total Produk', value: '45', icon: Package, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+  { label: 'Total Pesanan', value: '1,234', icon: ShoppingCart, color: 'text-green-400', bg: 'bg-green-400/10' },
+  { label: 'Total Pengguna', value: '567', icon: Users, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+  { label: 'Pendapatan Bulan Ini', value: formatCurrency(45000000), icon: DollarSign, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+];
+
+const recentOrders = [
+  { id: 'ORD-1234', user: 'john@example.com', product: 'Mobile Legends', amount: 25000, status: 'completed' },
+  { id: 'ORD-1235', user: 'jane@example.com', product: 'Free Fire', amount: 15000, status: 'pending' },
+  { id: 'ORD-1236', user: 'bob@example.com', product: 'PUBG Mobile', amount: 50000, status: 'processing' },
+];
+
+const statusColors = {
+  pending: 'text-yellow-400 bg-yellow-400/10',
+  processing: 'text-blue-400 bg-blue-400/10',
+  completed: 'text-green-400 bg-green-400/10',
+  failed: 'text-red-400 bg-red-400/10',
+};
+---
+
+<Dashboard title="Admin Dashboard - Boba.Store">
+  <div class="space-y-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-white">Admin Dashboard</h1>
+        <p class="text-white/60 mt-1">Selamat datang di panel admin</p>
+      </div>
+      <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-green-400/10 text-green-400">
+        <Activity class="w-4 h-4" />
+        <span class="text-sm font-medium">System Online</span>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {stats.map(stat => {
+        const Icon = stat.icon;
+        return (
+          <div class="glass rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class={`w-12 h-12 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                <Icon class={`w-6 h-6 ${stat.color}`} />
+              </div>
+              <TrendingUp class="w-4 h-4 text-green-400" />
+            </div>
+            <p class="text-2xl font-bold text-white">{stat.value}</p>
+            <p class="text-sm text-white/60 mt-1">{stat.label}</p>
+          </div>
+        );
+      })}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <a href="/admin/products" class="glass rounded-2xl p-6 hover:bg-white/10 transition-colors group">
+        <Package class="w-8 h-8 text-[var(--color-primary)] mb-4" />
+        <h3 class="text-lg font-bold text-white mb-2 group-hover:text-[var(--color-primary)] transition-colors">
+          Kelola Produk
+        </h3>
+        <p class="text-white/60 text-sm">Tambah, edit, atau hapus produk</p>
+      </a>
+      <a href="/admin/orders" class="glass rounded-2xl p-6 hover:bg-white/10 transition-colors group">
+        <ShoppingCart class="w-8 h-8 text-[var(--color-primary)] mb-4" />
+        <h3 class="text-lg font-bold text-white mb-2 group-hover:text-[var(--color-primary)] transition-colors">
+          Kelola Pesanan
+        </h3>
+        <p class="text-white/60 text-sm">Lihat dan proses pesanan masuk</p>
+      </a>
+      <a href="/admin/users" class="glass rounded-2xl p-6 hover:bg-white/10 transition-colors group">
+        <Users class="w-8 h-8 text-[var(--color-primary)] mb-4" />
+        <h3 class="text-lg font-bold text-white mb-2 group-hover:text-[var(--color-primary)] transition-colors">
+          Kelola Pengguna
+        </h3>
+        <p class="text-white/60 text-sm">Lihat dan kelola pengguna</p>
+      </a>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="glass rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-bold text-white">Pesanan Terbaru</h2>
+        <a href="/admin/orders" class="text-sm text-[var(--color-primary)] hover:underline">
+          Lihat Semua
+        </a>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-white/60 text-sm border-b border-white/10">
+              <th class="pb-4 font-medium">ID Pesanan</th>
+              <th class="pb-4 font-medium">User</th>
+              <th class="pb-4 font-medium">Produk</th>
+              <th class="pb-4 font-medium">Status</th>
+              <th class="pb-4 font-medium text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            {recentOrders.map(order => (
+              <tr class="hover:bg-white/5 transition-colors">
+                <td class="py-4">
+                  <span class="text-[var(--color-primary)] font-medium">{order.id}</span>
+                </td>
+                <td class="py-4 text-white/70">{order.user}</td>
+                <td class="py-4 text-white">{order.product}</td>
+                <td class="py-4">
+                  <span class={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[order.status]}`}>
+                    {order.status}
+                  </span>
+                </td>
+                <td class="py-4 text-right text-white font-medium">{formatCurrency(order.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</Dashboard>
