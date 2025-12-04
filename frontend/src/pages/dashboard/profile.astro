@@ -1,0 +1,167 @@
+---
+import Dashboard from "../../layouts/Dashboard.astro";
+import { User, Mail, Phone, Key, Save, Shield } from "lucide-astro";
+
+// TODO: Get from session/API
+const user = {
+  name: 'John Doe',
+  email: 'john@example.com',
+  phone: '081234567890',
+  createdAt: '2024-01-01',
+};
+---
+
+<Dashboard title="Profil - Boba.Store">
+  <div class="space-y-8 max-w-2xl">
+    <!-- Header -->
+    <div>
+      <h1 class="text-3xl font-bold text-white">Profil</h1>
+      <p class="text-white/60 mt-1">Kelola informasi akun Anda.</p>
+    </div>
+
+    <!-- Profile Card -->
+    <div class="glass rounded-2xl p-6">
+      <div class="flex items-center gap-6 mb-8">
+        <div class="w-20 h-20 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center">
+          <User class="w-10 h-10 text-[var(--color-primary)]" />
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-white">{user.name}</h2>
+          <p class="text-white/60">{user.email}</p>
+        </div>
+      </div>
+
+      <form id="profile-form" class="space-y-6">
+        <div>
+          <label class="block text-sm font-medium text-white/70 mb-2">
+            <User class="w-4 h-4 inline mr-2" />
+            Nama Lengkap
+          </label>
+          <input
+            type="text"
+            name="name"
+            value={user.name}
+            class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-white/70 mb-2">
+            <Mail class="w-4 h-4 inline mr-2" />
+            Email
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={user.email}
+            class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-white/70 mb-2">
+            <Phone class="w-4 h-4 inline mr-2" />
+            No. WhatsApp
+          </label>
+          <input
+            type="tel"
+            name="phone"
+            value={user.phone}
+            placeholder="08xxxxxxxxxx"
+            class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-[var(--color-primary)] text-white font-bold hover:brightness-110 transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+        >
+          <Save class="w-5 h-5" />
+          Simpan Perubahan
+        </button>
+      </form>
+    </div>
+
+    <!-- Change Password -->
+    <div class="glass rounded-2xl p-6">
+      <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-2">
+        <Key class="w-5 h-5 text-[var(--color-primary)]" />
+        Ubah Password
+      </h3>
+
+      <form id="password-form" class="space-y-6">
+        <div>
+          <label class="block text-sm font-medium text-white/70 mb-2">Password Saat Ini</label>
+          <input
+            type="password"
+            name="currentPassword"
+            class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-white/70 mb-2">Password Baru</label>
+          <input
+            type="password"
+            name="newPassword"
+            class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-white/70 mb-2">Konfirmasi Password Baru</label>
+          <input
+            type="password"
+            name="confirmPassword"
+            class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="flex items-center justify-center gap-2 w-full py-4 rounded-xl glass glass-hover text-white font-bold transition-all"
+        >
+          <Key class="w-5 h-5" />
+          Ubah Password
+        </button>
+      </form>
+    </div>
+
+    <!-- Security -->
+    <div class="glass rounded-2xl p-6">
+      <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <Shield class="w-5 h-5 text-[var(--color-primary)]" />
+        Keamanan
+      </h3>
+      <p class="text-white/60 text-sm mb-4">
+        Akun dibuat pada {new Date(user.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </p>
+      <a href="/auth/logout" class="text-red-400 hover:underline text-sm">
+        Keluar dari semua perangkat
+      </a>
+    </div>
+  </div>
+</Dashboard>
+
+<script>
+  const profileForm = document.getElementById('profile-form') as HTMLFormElement;
+  const passwordForm = document.getElementById('password-form') as HTMLFormElement;
+
+  profileForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alert('Profil berhasil disimpan!');
+  });
+
+  passwordForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(passwordForm);
+    
+    if (formData.get('newPassword') !== formData.get('confirmPassword')) {
+      alert('Password baru tidak cocok!');
+      return;
+    }
+    
+    alert('Password berhasil diubah!');
+    passwordForm.reset();
+  });
+</script>

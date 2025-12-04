@@ -1,0 +1,164 @@
+---
+import { ViewTransitions } from "astro:transitions";
+import { cn } from "../lib/utils";
+import { Home, Package, History, User, LogOut, Menu, X } from "lucide-astro";
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "Dashboard - Boba.Store" } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const sidebarLinks = [
+  { href: '/dashboard', label: 'Dashboard', icon: Home },
+  { href: '/dashboard/history', label: 'Riwayat Transaksi', icon: History },
+  { href: '/dashboard/profile', label: 'Profil', icon: User },
+];
+
+function isActive(href: string): boolean {
+  if (href === '/dashboard') {
+    return currentPath === '/dashboard';
+  }
+  return currentPath.startsWith(href);
+}
+
+// TODO: Get user from session
+const user = { name: 'User', email: 'user@example.com' };
+---
+
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title}</title>
+    <ViewTransitions />
+  </head>
+  <body class="bg-[var(--color-background)] text-[var(--color-text-main)]">
+    <div class="min-h-screen flex">
+      <!-- Sidebar -->
+      <aside 
+        id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-64 bg-black/40 backdrop-blur-xl border-r border-white/5 transform -translate-x-full lg:translate-x-0 transition-transform duration-300"
+      >
+        <div class="flex flex-col h-full">
+          <!-- Logo -->
+          <div class="p-6 border-b border-white/5">
+            <a href="/" class="text-2xl font-bold tracking-tighter">
+              <span class="text-gradient">Boba</span>.Store
+            </a>
+          </div>
+
+          <!-- Navigation -->
+          <nav class="flex-1 p-4 space-y-2">
+            {sidebarLinks.map(link => {
+              const Icon = link.icon;
+              return (
+                <a 
+                  href={link.href}
+                  class={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                    isActive(link.href)
+                      ? "bg-[var(--color-primary)] text-white"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <Icon class="w-5 h-5" />
+                  <span class="font-medium">{link.label}</span>
+                </a>
+              );
+            })}
+          </nav>
+
+          <!-- User & Logout -->
+          <div class="p-4 border-t border-white/5">
+            <div class="flex items-center gap-3 px-4 py-3 mb-2">
+              <div class="w-10 h-10 rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center">
+                <User class="w-5 h-5 text-[var(--color-primary)]" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-white truncate">{user.name}</p>
+                <p class="text-xs text-white/50 truncate">{user.email}</p>
+              </div>
+            </div>
+            <a 
+              href="/auth/logout"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-400/10 transition-all"
+            >
+              <LogOut class="w-5 h-5" />
+              <span class="font-medium">Keluar</span>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Mobile Header -->
+      <div class="lg:hidden fixed top-0 left-0 right-0 z-40 h-16 bg-black/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-4">
+        <a href="/" class="text-xl font-bold tracking-tighter">
+          <span class="text-gradient">Boba</span>.Store
+        </a>
+        <button 
+          id="sidebar-toggle"
+          class="p-2 text-white/70 hover:text-white transition-colors"
+          aria-label="Toggle sidebar"
+        >
+          <Menu class="w-6 h-6" id="menu-icon" />
+          <X class="w-6 h-6 hidden" id="close-icon" />
+        </button>
+      </div>
+
+      <!-- Overlay -->
+      <div 
+        id="sidebar-overlay"
+        class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"
+      ></div>
+
+      <!-- Main Content -->
+      <main class="flex-1 lg:ml-64 pt-16 lg:pt-0">
+        <div class="p-6 lg:p-8" transition:animate="fade">
+          <slot />
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const sidebar = document.getElementById('sidebar');
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      const sidebarOverlay = document.getElementById('sidebar-overlay');
+      const menuIcon = document.getElementById('menu-icon');
+      const closeIcon = document.getElementById('close-icon');
+
+      function toggleSidebar() {
+        const isOpen = !sidebar?.classList.contains('-translate-x-full');
+        
+        if (isOpen) {
+          sidebar?.classList.add('-translate-x-full');
+          sidebarOverlay?.classList.add('hidden');
+          menuIcon?.classList.remove('hidden');
+          closeIcon?.classList.add('hidden');
+        } else {
+          sidebar?.classList.remove('-translate-x-full');
+          sidebarOverlay?.classList.remove('hidden');
+          menuIcon?.classList.add('hidden');
+          closeIcon?.classList.remove('hidden');
+        }
+      }
+
+      sidebarToggle?.addEventListener('click', toggleSidebar);
+      sidebarOverlay?.addEventListener('click', toggleSidebar);
+    </script>
+  </body>
+</html>
+
+<style>
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+  }
+</style>

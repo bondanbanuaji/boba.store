@@ -1,0 +1,53 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Home, ArrowLeft, Search } from "lucide-astro";
+---
+
+<Layout>
+  <section class="min-h-[70vh] flex items-center justify-center py-20">
+    <div class="container mx-auto px-4 text-center">
+      <div class="mb-8">
+        <span class="text-[150px] md:text-[200px] font-bold text-gradient leading-none">404</span>
+      </div>
+      
+      <h1 class="text-3xl md:text-4xl font-bold text-white mb-4">
+        Halaman Tidak Ditemukan
+      </h1>
+      
+      <p class="text-white/60 max-w-md mx-auto mb-12">
+        Maaf, halaman yang kamu cari tidak ada atau sudah dipindahkan.
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a
+          href="/"
+          class="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--color-primary)] text-white font-bold hover:brightness-110 transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+        >
+          <Home class="w-5 h-5" />
+          Kembali ke Beranda
+        </a>
+        
+        <a
+          href="/products"
+          class="flex items-center gap-2 px-6 py-3 rounded-full glass glass-hover text-white font-medium"
+        >
+          <Search class="w-5 h-5" />
+          Lihat Produk
+        </a>
+      </div>
+
+      <div class="mt-16">
+        <p class="text-white/40 text-sm mb-4">Atau coba halaman berikut:</p>
+        <div class="flex flex-wrap items-center justify-center gap-4">
+          <a href="/products" class="text-white/60 hover:text-white transition-colors">Daftar Game</a>
+          <span class="text-white/20">•</span>
+          <a href="/track" class="text-white/60 hover:text-white transition-colors">Lacak Pesanan</a>
+          <span class="text-white/20">•</span>
+          <a href="/auth/login" class="text-white/60 hover:text-white transition-colors">Masuk</a>
+          <span class="text-white/20">•</span>
+          <a href="/contact" class="text-white/60 hover:text-white transition-colors">Hubungi Kami</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

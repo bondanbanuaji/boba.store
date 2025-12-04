@@ -1,0 +1,211 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { Mail, MessageCircle, Clock, MapPin, Send } from "lucide-astro";
+---
+
+<Layout>
+  <section class="py-12 bg-gradient-to-b from-[var(--color-primary)]/10 to-transparent">
+    <div class="container mx-auto px-4 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-6">
+        Hubungi <span class="text-gradient">Kami</span>
+      </h1>
+      <p class="text-white/60 max-w-2xl mx-auto">
+        Ada pertanyaan atau butuh bantuan? Tim kami siap membantu Anda 24/7.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-12">
+    <div class="container mx-auto px-4 max-w-5xl">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Contact Info -->
+        <div class="space-y-6">
+          <div class="glass rounded-2xl p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-[var(--color-primary)]/20 flex items-center justify-center flex-shrink-0">
+                <MessageCircle class="w-6 h-6 text-[var(--color-primary)]" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-white mb-2">WhatsApp</h3>
+                <p class="text-white/60 mb-3">Respon cepat untuk pertanyaan dan bantuan.</p>
+                <a
+                  href="https://wa.me/6281234567890"
+                  target="_blank"
+                  class="inline-flex items-center gap-2 text-[var(--color-primary)] hover:underline font-medium"
+                >
+                  +62 812-3456-7890
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass rounded-2xl p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-[var(--color-primary)]/20 flex items-center justify-center flex-shrink-0">
+                <Mail class="w-6 h-6 text-[var(--color-primary)]" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-white mb-2">Email</h3>
+                <p class="text-white/60 mb-3">Untuk pertanyaan formal atau kerjasama.</p>
+                <a
+                  href="mailto:support@boba.store"
+                  class="inline-flex items-center gap-2 text-[var(--color-primary)] hover:underline font-medium"
+                >
+                  support@boba.store
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass rounded-2xl p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-[var(--color-primary)]/20 flex items-center justify-center flex-shrink-0">
+                <Clock class="w-6 h-6 text-[var(--color-primary)]" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-white mb-2">Jam Operasional</h3>
+                <p class="text-white/60">Layanan customer service tersedia 24 jam.</p>
+                <p class="text-white font-medium mt-2">Senin - Minggu: 24 Jam</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass rounded-2xl p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-[var(--color-primary)]/20 flex items-center justify-center flex-shrink-0">
+                <MapPin class="w-6 h-6 text-[var(--color-primary)]" />
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-white mb-2">Lokasi</h3>
+                <p class="text-white/60">Indonesia</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact Form -->
+        <div class="glass rounded-2xl p-8">
+          <h2 class="text-2xl font-bold text-white mb-6">Kirim Pesan</h2>
+          
+          <form id="contact-form" class="space-y-6">
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Nama Lengkap</label>
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="Masukkan nama Anda"
+                class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Email</label>
+              <input
+                type="email"
+                name="email"
+                required
+                placeholder="email@example.com"
+                class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Subjek</label>
+              <select
+                name="subject"
+                required
+                class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+              >
+                <option value="" class="bg-[var(--color-background)]">Pilih subjek</option>
+                <option value="order" class="bg-[var(--color-background)]">Pertanyaan Pesanan</option>
+                <option value="payment" class="bg-[var(--color-background)]">Masalah Pembayaran</option>
+                <option value="refund" class="bg-[var(--color-background)]">Permintaan Refund</option>
+                <option value="partnership" class="bg-[var(--color-background)]">Kerjasama</option>
+                <option value="other" class="bg-[var(--color-background)]">Lainnya</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">ID Pesanan (Opsional)</label>
+              <input
+                type="text"
+                name="orderId"
+                placeholder="ORD-XXXXX"
+                class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-white/70 mb-2">Pesan</label>
+              <textarea
+                name="message"
+                required
+                rows="5"
+                placeholder="Tulis pesan Anda di sini..."
+                class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors resize-none"
+              ></textarea>
+            </div>
+
+            <button
+              type="submit"
+              class="w-full py-4 rounded-xl bg-[var(--color-primary)] text-white font-bold text-lg hover:brightness-110 transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)] flex items-center justify-center gap-2"
+            >
+              <Send class="w-5 h-5" />
+              Kirim Pesan
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- FAQ Section -->
+      <div class="mt-16">
+        <h2 class="text-2xl font-bold text-white text-center mb-8">Pertanyaan Umum</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="glass rounded-2xl p-6">
+            <h3 class="font-bold text-white mb-2">Berapa lama proses top-up?</h3>
+            <p class="text-white/60">Proses top-up dilakukan secara otomatis dan biasanya selesai dalam 1-5 menit setelah pembayaran dikonfirmasi.</p>
+          </div>
+
+          <div class="glass rounded-2xl p-6">
+            <h3 class="font-bold text-white mb-2">Apa yang harus dilakukan jika top-up gagal?</h3>
+            <p class="text-white/60">Hubungi customer service kami dengan menyertakan ID pesanan. Kami akan membantu menyelesaikan masalah Anda.</p>
+          </div>
+
+          <div class="glass rounded-2xl p-6">
+            <h3 class="font-bold text-white mb-2">Apakah bisa refund?</h3>
+            <p class="text-white/60">Refund hanya dapat dilakukan jika terjadi kegagalan dari sistem kami. Proses refund memerlukan waktu 1-7 hari kerja.</p>
+          </div>
+
+          <div class="glass rounded-2xl p-6">
+            <h3 class="font-bold text-white mb-2">Metode pembayaran apa saja yang tersedia?</h3>
+            <p class="text-white/60">Kami menerima QRIS, e-wallet (DANA, GoPay, OVO, ShopeePay), dan transfer bank (BCA, BNI, BRI, Mandiri).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  const form = document.getElementById('contact-form') as HTMLFormElement;
+  
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="animate-pulse">Mengirim...</span>';
+
+    // Simulate form submission (replace with actual API call)
+    setTimeout(() => {
+      alert('Pesan Anda telah terkirim! Kami akan segera menghubungi Anda.');
+      form.reset();
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg> Kirim Pesan';
+    }, 1500);
+  });
+</script>

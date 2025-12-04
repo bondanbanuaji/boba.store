@@ -1,11 +1,100 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import Layout from "../layouts/Layout.astro";
+import Hero from "../components/sections/Hero.astro";
+import ProductCard from "../components/widgets/ProductCard.astro";
+import { getProducts } from "../lib/api";
+interface Product {
+    name: string;
+    slug: string;
+    imageUrl: string;
+    provider: string;
+    category: string;
+}
+const response = await getProducts();
+const products: Product[] = (response.data as Product[]) || [];
+const featuredProducts = products.slice(0, 8);
 ---
 
 <Layout>
-	<Welcome />
+    <Hero />
+    <section class="py-20">
+        <div class="container mx-auto px-4">
+            <div class="flex
+items-center justify-between mb-10">
+                <h2 class="text-3xl font-bold text-white">
+                    Game <span class="text-gradient">Populer</span>
+                </h2>
+                <a
+                    href="/products"
+                    class="text-white/60 hover:text-white transition-colors flex items-center gap-2"
+                >
+                    Lihat Semua <span class="text-xl">&rarr;</span>
+                </a>
+            </div>
+            <div class="grid
+grid-cols-2 md:grid-cols-4 gap-6">
+                {
+                    featuredProducts.map((product) => (
+                        <ProductCard product={product} />
+                    ))
+                }
+            </div>
+        </div>
+    </section>
+    <!-- Features
+Section -->
+    <section class="py-20 border-t border-white/5 bg-white/5">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3
+gap-8 text-center">
+                <div class="p-6 rounded-2xl glass">
+                    <div
+                        class="w-16 h-16
+rounded-full bg-[var(--color-primary)]/20 flex items-center justify-center
+mx-auto mb-6 text-3xl"
+                    >
+                        ⚡
+                    </div>
+                    <h3 class="text-xl font-bold text-white
+mb-3">
+                        Proses Kilat
+                    </h3>
+                    <p class="text-white/60">
+                        Top up masuk dalam hitungan detik setelah pembayaran
+                        berhasil.
+                    </p>
+                </div>
+                <div class="p-6 rounded-2xl
+glass">
+                    <div
+                        class="w-16 h-16 rounded-full bg-[var(--color-secondary)]/20 flex
+items-center justify-center mx-auto mb-6 text-3xl"
+                    >
+                        🛡️
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">
+                        Aman & Terpercaya
+                    </h3>
+                    <p class="text-white/60">
+                        Transaksi aman dengan garansi uang kembali jika gagal.
+                    </p>
+                </div>
+                <div class="p-6 rounded-2xl glass">
+                    <div
+                        class="w-16 h-16
+rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-6
+text-3xl"
+                    >
+                        💬
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">
+                        Layanan 24/7
+                    </h3>
+                    <p class="text-white/60">
+                        Customer service siap membantu kapanpun kamu butuh.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
 </Layout>

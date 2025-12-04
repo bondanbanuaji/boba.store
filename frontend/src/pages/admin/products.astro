@@ -1,0 +1,121 @@
+---
+import Dashboard from "../../layouts/Dashboard.astro";
+import { Plus, Search, Edit, Trash2, Package } from "lucide-astro";
+import { formatCurrency } from "../../lib/utils";
+
+// TODO: Fetch from API
+const products = [
+  { id: 1, name: 'Mobile Legends', slug: 'mobile-legends', category: 'game', provider: 'Moonton', status: 'active', image: '/images/ml.jpg' },
+  { id: 2, name: 'Free Fire', slug: 'free-fire', category: 'game', provider: 'Garena', status: 'active', image: '/images/ff.jpg' },
+  { id: 3, name: 'PUBG Mobile', slug: 'pubg-mobile', category: 'game', provider: 'Tencent', status: 'active', image: '/images/pubg.jpg' },
+  { id: 4, name: 'Genshin Impact', slug: 'genshin-impact', category: 'game', provider: 'miHoYo', status: 'inactive', image: '/images/genshin.jpg' },
+];
+
+const statusColors = {
+  active: 'text-green-400 bg-green-400/10',
+  inactive: 'text-red-400 bg-red-400/10',
+};
+---
+
+<Dashboard title="Kelola Produk - Boba.Store">
+  <div class="space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-white">Kelola Produk</h1>
+        <p class="text-white/60 mt-1">Tambah, edit, atau hapus produk</p>
+      </div>
+      <button
+        id="add-product-btn"
+        class="flex items-center gap-2 px-6 py-3 rounded-xl bg-[var(--color-primary)] text-white font-bold hover:brightness-110 transition-all shadow-[0_0_20px_rgba(147,51,234,0.3)]"
+      >
+        <Plus class="w-5 h-5" />
+        Tambah Produk
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="glass rounded-2xl p-4">
+      <div class="flex flex-col md:flex-row gap-4">
+        <div class="flex-1 relative">
+          <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
+          <input
+            type="text"
+            placeholder="Cari produk..."
+            class="w-full bg-black/20 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+          />
+        </div>
+        <select class="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors min-w-[150px]">
+          <option value="" class="bg-[var(--color-background)]">Semua Kategori</option>
+          <option value="game" class="bg-[var(--color-background)]">Game</option>
+          <option value="pulsa" class="bg-[var(--color-background)]">Pulsa & Data</option>
+          <option value="ewallet" class="bg-[var(--color-background)]">E-Wallet</option>
+        </select>
+        <select class="bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors min-w-[150px]">
+          <option value="" class="bg-[var(--color-background)]">Semua Status</option>
+          <option value="active" class="bg-[var(--color-background)]">Aktif</option>
+          <option value="inactive" class="bg-[var(--color-background)]">Nonaktif</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-white/60 text-sm border-b border-white/10 bg-black/20">
+              <th class="px-6 py-4 font-medium">Produk</th>
+              <th class="px-6 py-4 font-medium">Kategori</th>
+              <th class="px-6 py-4 font-medium">Provider</th>
+              <th class="px-6 py-4 font-medium">Status</th>
+              <th class="px-6 py-4 font-medium text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5">
+            {products.map(product => (
+              <tr class="hover:bg-white/5 transition-colors">
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-white/10 overflow-hidden">
+                      <img src={product.image} alt={product.name} class="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <p class="font-medium text-white">{product.name}</p>
+                      <p class="text-sm text-white/50">{product.slug}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-white/70 capitalize">{product.category}</td>
+                <td class="px-6 py-4 text-white/70">{product.provider}</td>
+                <td class="px-6 py-4">
+                  <span class={`px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[product.status]}`}>
+                    {product.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center justify-end gap-2">
+                    <button class="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors">
+                      <Edit class="w-4 h-4" />
+                    </button>
+                    <button class="p-2 rounded-lg hover:bg-red-400/10 text-white/70 hover:text-red-400 transition-colors">
+                      <Trash2 class="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {products.length === 0 && (
+        <div class="text-center py-16">
+          <Package class="w-16 h-16 text-white/20 mx-auto mb-4" />
+          <h3 class="text-xl font-bold text-white mb-2">Belum Ada Produk</h3>
+          <p class="text-white/60">Klik tombol "Tambah Produk" untuk menambahkan produk baru.</p>
+        </div>
+      )}
+    </div>
+  </div>
+</Dashboard>

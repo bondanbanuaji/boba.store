@@ -9,6 +9,14 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^5.16.4"
+    "@astrojs/node": "^9.5.1",
+    "@better-auth/client": "^0.0.2-alpha.3",
+    "@tailwindcss/vite": "^4.1.17",
+    "astro": "^5.16.4",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "lucide-astro": "^0.555.0",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.17"
   }
 }
