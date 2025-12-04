@@ -1,10 +1,14 @@
-# Platform Top-Up Boba.Store - SEAN Stack
+# Platform Top-Up Boba.Store - SEAN Stack + Better Auth + Drizzle
 
 ## Tech Stack
-- **S**upabase - Database & Auth
+- **S**upabase - Database PostgreSQL (via Drizzle ORM)
 - **E**xpress - Backend API
 - **A**stro - Frontend Framework
 - **N**ode.js - Runtime
+
+### Tambahan Tech Stack
+- **Better Auth** - Authentication library (mengganti Supabase Auth)
+- **Drizzle ORM** - Type-safe ORM untuk PostgreSQL
 
 ## 📁 Project Structure (Plan vs Current Status)
 
@@ -36,8 +40,8 @@ frontend/
 │   ├── layouts/
 │   │   ├── Layout.astro          ✅ EXISTS (basic - needs update)
 │   │   └── DashboardLayout.astro ✅ EXISTS
-│   ├── lib/                      ✅ EXISTS (empty)
-│   │   ├── supabase.js           ✅ EXISTS
+│   ├── lib/                      ✅ EXISTS
+│   │   ├── auth-client.js        ✅ EXISTS (Better Auth client)
 │   │   └── api.js                ✅ EXISTS
 │   ├── pages/
 │   │   ├── index.astro           ✅ EXISTS (empty shell)
@@ -62,27 +66,30 @@ frontend/
 │       └── global.css            ✅ EXISTS
 ```
 
-### Backend (Express) - NOT YET CREATED
+### Backend (Express) - PARTIALLY CREATED
 
 ```
-backend/                          ❌ TODO (entire folder)
-├── package.json                  ❌ TODO
-├── .env                          ❌ TODO
+backend/
+├── package.json                  ✅ EXISTS (with Drizzle & Better Auth)
+├── drizzle.config.js             ✅ EXISTS (Drizzle config)
+├── .env.example                  ✅ EXISTS
 ├── src/
-│   ├── index.js                  ❌ TODO (entry point)
+│   ├── index.js                  ✅ EXISTS (entry point)
+│   ├── db/
+│   │   └── schema.js             ✅ EXISTS (Drizzle schema)
+│   ├── lib/
+│   │   ├── db.js                 ✅ EXISTS (Drizzle connection)
+│   │   └── auth.js               ✅ EXISTS (Better Auth config)
 │   ├── config/
-│   │   ├── supabase.js           ❌ TODO
 │   │   ├── payment.js            ❌ TODO
 │   │   └── provider.js           ❌ TODO
 │   ├── routes/
-│   │   ├── index.js              ❌ TODO
-│   │   ├── auth.js               ❌ TODO
+│   │   ├── auth.js               ✅ EXISTS (Better Auth handler)
 │   │   ├── products.js           ❌ TODO
 │   │   ├── orders.js             ❌ TODO
 │   │   ├── payments.js           ❌ TODO
 │   │   └── webhooks.js           ❌ TODO
 │   ├── controllers/
-│   │   ├── authController.js     ❌ TODO
 │   │   ├── orderController.js    ❌ TODO
 │   │   ├── paymentController.js  ❌ TODO
 │   │   └── providerController.js ❌ TODO
@@ -91,7 +98,7 @@ backend/                          ❌ TODO (entire folder)
 │   │   ├── xendit.js             ❌ TODO
 │   │   └── notification.js       ❌ TODO
 │   ├── middleware/
-│   │   ├── auth.js               ❌ TODO
+│   │   ├── auth.js               ✅ EXISTS (Better Auth middleware)
 │   │   ├── validation.js         ❌ TODO
 │   │   └── rateLimit.js          ❌ TODO
 │   └── utils/
@@ -99,12 +106,18 @@ backend/                          ❌ TODO (entire folder)
 │       └── helpers.js            ❌ TODO
 ```
 
-### Supabase Schema - NOT YET CREATED
+### Database Schema - DOCUMENTED
 
 ```
-supabase/                         ❌ TODO (entire folder)
-└── migrations/
-    └── 001_initial_schema.sql    ❌ TODO
+docs/
+├── backend-step-todo.md          ✅ EXISTS (Complete SQL migrations)
+└── Database includes:
+    ├── Better Auth tables        ✅ (user, session, account, verification)
+    ├── Application tables        ✅ (profiles, products, orders, transactions, settings, audit_logs)
+    ├── RLS Policies              ✅ (All tables secured)
+    ├── Functions & Triggers      ✅ (Auto timestamps, order number, balance, audit)
+    ├── Indexes                   ✅ (Optimized for common queries)
+    └── Realtime setup            ✅ (orders, profiles, transactions)
 ```
 
 ## 🗄️ Database Schema (Supabase)
@@ -273,9 +286,8 @@ CREATE INDEX idx_products_slug ON products(slug);
 
 ### Frontend (.env)
 ```env
-PUBLIC_SUPABASE_URL=your_supabase_url
-PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-PUBLIC_API_URL=http://localhost:3000/api
+# Backend API URL (untuk Better Auth dan API calls)
+PUBLIC_API_URL=http://localhost:3000
 ```
 
 ### Backend (.env)
@@ -283,13 +295,14 @@ PUBLIC_API_URL=http://localhost:3000/api
 # Server
 PORT=3000
 NODE_ENV=development
+FRONTEND_URL=http://localhost:4321
 
-# Supabase
-SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_KEY=your_supabase_service_key
+# Database (Supabase PostgreSQL via Drizzle ORM)
+DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 
-# JWT
-JWT_SECRET=your_jwt_secret
+# Better Auth
+BETTER_AUTH_SECRET=your-secret-key-min-32-characters-long
+BETTER_AUTH_URL=http://localhost:3000
 
 # VIP Reseller
 VIPRESELLER_API_ID=your_api_id
@@ -307,21 +320,32 @@ XENDIT_IS_PRODUCTION=false
 |---------|--------|----------|
 | Frontend Pages | Shell exists | 20% |
 | Frontend Components | Folders exist | 5% |
-| Frontend Lib | Empty | 0% |
-| Backend | Not started | 0% |
-| Supabase Schema | Not started | 0% |
-| **Overall** | | **~10%** |
+| Frontend Lib | Auth client created | 30% |
+| Backend Core | Drizzle + Better Auth setup | 40% |
+| Backend Routes | Auth route only | 15% |
+| Database Schema | Complete SQL migrations | 90% |
+| Database Functions | All triggers & functions | 100% |
+| RLS Policies | All tables secured | 100% |
+| **Overall** | | **~40%** |
 
 ## 🔗 External Services
 
-1. **Supabase** - Database & Authentication
+1. **Supabase** - Database PostgreSQL
    - Website: https://supabase.com
    - Docs: https://supabase.com/docs
 
-2. **VIP Reseller** - Top-up Provider
+2. **Better Auth** - Authentication Library
+   - Website: https://better-auth.com
+   - Docs: https://better-auth.com/docs
+
+3. **Drizzle ORM** - Database ORM
+   - Website: https://orm.drizzle.team
+   - Docs: https://orm.drizzle.team/docs
+
+4. **VIP Reseller** - Top-up Provider
    - Website: https://vip-reseller.co.id
    - API Docs: https://vip-reseller.co.id/api
 
-3. **Xendit** - Payment Gateway
+5. **Xendit** - Payment Gateway
    - Website: https://xendit.co
    - Docs: https://developers.xendit.co

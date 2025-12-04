@@ -9,7 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.2",
+    "@better-auth/client": "^1.0.0",
     "@tailwindcss/vite": "^4.1.17",
     "astro": "^5.16.4",
     "dotenv": "^17.2.3",

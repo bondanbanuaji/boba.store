@@ -32,14 +32,20 @@ Kita akan membangun **platform top-up game dan pulsa** lengkap dengan fitur:
 - Dashboard user dan admin
 - Authentication dengan Supabase
 
-### 1.2 Tech Stack: SEAN
+### 1.2 Tech Stack: SEAN + Better Auth + Drizzle
 
 | Huruf | Teknologi | Fungsi |
 |-------|-----------|--------|
-| **S** | Supabase | Database PostgreSQL + Authentication |
+| **S** | Supabase | Database PostgreSQL (via Drizzle ORM) |
 | **E** | Express.js | Backend REST API |
 | **A** | Astro | Frontend Framework (SSR/SSG) |
 | **N** | Node.js | JavaScript Runtime |
+
+**Tambahan Tech Stack:**
+| Teknologi | Fungsi |
+|-----------|--------|
+| **Better Auth** | Authentication library (mengganti Supabase Auth) |
+| **Drizzle ORM** | Type-safe ORM untuk PostgreSQL |
 
 ### 1.3 Arsitektur Aplikasi
 
@@ -149,7 +155,7 @@ npm create astro@latest frontend
 cd frontend
 
 # Install dependencies tambahan
-npm install @supabase/supabase-js
+npm install @better-auth/client
 npm install -D tailwindcss @astrojs/tailwind
 ```
 
@@ -212,8 +218,11 @@ npm init -y
 # Core dependencies
 npm install express cors dotenv helmet morgan
 
-# Supabase client
-npm install @supabase/supabase-js
+# Database & ORM (Drizzle + Supabase PostgreSQL)
+npm install drizzle-orm postgres
+
+# Authentication (Better Auth)
+npm install better-auth
 
 # Xendit SDK
 npm install xendit-node
@@ -222,7 +231,7 @@ npm install xendit-node
 npm install axios crypto uuid
 
 # Development
-npm install -D nodemon
+npm install -D nodemon drizzle-kit
 ```
 
 #### Langkah 3: Struktur Folder Backend
@@ -258,9 +267,8 @@ mkdir -p src/{config,routes,controllers,services,middleware,utils}
 #### Frontend: `frontend/.env`
 
 ```env
-PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6...
-PUBLIC_API_URL=http://localhost:3000/api
+# Backend API URL (untuk Better Auth dan API calls)
+PUBLIC_API_URL=http://localhost:3000
 ```
 
 #### Backend: `backend/.env`
@@ -270,12 +278,12 @@ PUBLIC_API_URL=http://localhost:3000/api
 PORT=3000
 NODE_ENV=development
 
-# Supabase
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6...
+# Database (Supabase PostgreSQL via Drizzle)
+DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 
-# JWT
-JWT_SECRET=rahasia-jwt-yang-panjang-dan-aman
+# Better Auth
+BETTER_AUTH_SECRET=rahasia-auth-yang-panjang-dan-aman-min-32-chars
+BETTER_AUTH_URL=http://localhost:3000
 
 # VIP Reseller
 VIPRESELLER_API_ID=api-id-anda
@@ -625,20 +633,54 @@ app.listen(PORT, () => {
 
 ### 5.2 Konfigurasi
 
-#### Supabase Config
+#### Database Config (Drizzle ORM)
 
-File: `backend/src/config/supabase.js`
+File: `backend/src/lib/db.js`
 
 ```javascript
-const { createClient } = require('@supabase/supabase-js');
+const { drizzle } = require('drizzle-orm/postgres-js');
+const postgres = require('postgres');
+const schema = require('../db/schema');
 
-// Gunakan service key untuk backend (bypass RLS)
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const connectionString = process.env.DATABASE_URL;
+const client = postgres(connectionString);
 
-module.exports = supabase;
+const db = drizzle(client, { schema });
+
+module.exports = { db };
+```
+
+#### Better Auth Config
+
+File: `backend/src/lib/auth.js`
+
+```javascript
+const { betterAuth } = require('better-auth');
+const { drizzleAdapter } = require('better-auth/adapters/drizzle');
+const { db } = require('./db');
+const schema = require('../db/schema');
+
+const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+    schema: {
+      user: schema.user,
+      session: schema.session,
+      account: schema.account,
+      verification: schema.verification,
+    },
+  }),
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    updateAge: 60 * 60 * 24, // 1 day
+  },
+});
+
+module.exports = { auth };
 ```
 
 #### Xendit Config
@@ -725,19 +767,19 @@ module.exports = router;
 File: `backend/src/controllers/productController.js`
 
 ```javascript
-const supabase = require('../config/supabase');
+const { db } = require('../lib/db');
+const { products } = require('../db/schema');
+const { eq, and } = require('drizzle-orm');
 
 const productController = {
   // Get all active products
   async getAll(req, res) {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .order('category');
+      const data = await db
+        .select()
+        .from(products)
+        .where(eq(products.isActive, true));
 
-      if (error) throw error;
       res.json({ success: true, data });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -748,13 +790,14 @@ const productController = {
   async getByCategory(req, res) {
     try {
       const { category } = req.params;
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('category', category)
-        .eq('is_active', true);
+      const data = await db
+        .select()
+        .from(products)
+        .where(and(
+          eq(products.category, category),
+          eq(products.isActive, true)
+        ));
 
-      if (error) throw error;
       res.json({ success: true, data });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
@@ -765,20 +808,19 @@ const productController = {
   async getBySlug(req, res) {
     try {
       const { slug } = req.params;
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('slug', slug)
-        .single();
+      const data = await db
+        .select()
+        .from(products)
+        .where(eq(products.slug, slug))
+        .limit(1);
 
-      if (error) throw error;
-      if (!data) {
+      if (!data.length) {
         return res.status(404).json({ 
           success: false, 
           error: 'Product not found' 
         });
       }
-      res.json({ success: true, data });
+      res.json({ success: true, data: data[0] });
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
@@ -796,32 +838,27 @@ module.exports = productController;
 
 ### 5.6 Middleware
 
-#### Authentication Middleware
+#### Authentication Middleware (Better Auth)
 
 File: `backend/src/middleware/auth.js`
 
 ```javascript
-const supabase = require('../config/supabase');
+const { auth } = require('../lib/auth');
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
+    // Get session dari Better Auth
+    const session = await auth.api.getSession({
+      headers: req.headers,
+    });
+
+    if (!session) {
+      return res.status(401).json({ error: 'No valid session' });
     }
 
-    const token = authHeader.split(' ')[1];
-
-    // Verify token dengan Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    // Attach user ke request
-    req.user = user;
+    // Attach user dan session ke request
+    req.user = session.user;
+    req.session = session.session;
     next();
   } catch (error) {
     res.status(401).json({ error: 'Authentication failed' });
@@ -1295,44 +1332,46 @@ export async function GET({ request }) {
 }
 ```
 
-### 6.8 Supabase Client di Frontend
+### 6.8 Better Auth Client di Frontend
 
-File: `frontend/src/lib/supabase.js`
+File: `frontend/src/lib/auth-client.js`
 
 ```javascript
-import { createClient } from '@supabase/supabase-js';
+import { createAuthClient } from '@better-auth/client';
 
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const authClient = createAuthClient({
+  baseURL: import.meta.env.PUBLIC_API_URL,
+});
 
 // Helper functions
-export async function signUp(email, password) {
-  const { data, error } = await supabase.auth.signUp({
+export async function signUp(email, password, name) {
+  const { data, error } = await authClient.signUp.email({
     email,
-    password
+    password,
+    name,
   });
   return { data, error };
 }
 
 export async function signIn(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await authClient.signIn.email({
     email,
-    password
+    password,
   });
   return { data, error };
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
+  const { error } = await authClient.signOut();
   return { error };
 }
 
-export async function getUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+export async function getSession() {
+  const session = await authClient.getSession();
+  return session;
 }
+
+export { authClient };
 ```
 
 ---
@@ -1793,7 +1832,7 @@ import Button from '../../components/atoms/Button.astro';
 </Layout>
 
 <script>
-  import { signIn } from '../../lib/supabase';
+  import { signIn } from '../../lib/auth-client';
 
   const form = document.getElementById('loginForm');
   
@@ -1823,12 +1862,22 @@ Untuk halaman yang butuh login:
 
 ```astro
 ---
-import { supabase } from '../lib/supabase';
+// Cek session via API call ke backend
+const apiUrl = import.meta.env.PUBLIC_API_URL;
 
-// Cek session di server
-const { data: { session } } = await supabase.auth.getSession();
+// Get cookies untuk dikirim ke backend
+const cookies = Astro.request.headers.get('cookie');
 
-if (!session) {
+const response = await fetch(`${apiUrl}/api/auth/get-session`, {
+  headers: {
+    cookie: cookies || '',
+  },
+  credentials: 'include',
+});
+
+const session = await response.json();
+
+if (!session || !session.user) {
   return Astro.redirect('/auth/login');
 }
 
